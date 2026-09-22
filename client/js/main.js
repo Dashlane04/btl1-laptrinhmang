@@ -1,15 +1,15 @@
 /**
  * Main Controller: Điều phối toàn bộ ứng dụng OTTv2 Web
+ * Chạy trên nền tảng Serverless thuần túy qua playhtml (PartyKit & Yjs CRDT).
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. KHỞI TẠO CÁC MODULE
+  // 1. KHỞI TẠO CÁC MODULE CỐT LÕI
   const board = new ClientBoard();
   const boardContainer = document.getElementById('board-container');
   let renderer = null;
   let controls = null;
-  const socketClient = new SocketClient();
-  const playfullAdapter = new PlayfullAdapter(window);
   const playhtmlAdapter = new PlayhtmlAdapter();
+  const playfullAdapter = new PlayfullAdapter(window);
 
   // Trạng thái cục bộ
   let currentMode = CONFIG.GAME_MODES.OFFLINE_2P;
@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const lobbyView = document.getElementById('lobby-view');
   const arenaView = document.getElementById('arena-view');
-  const connectionStatus = document.getElementById('connection-status');
   const userNicknameInput = document.getElementById('user-nickname');
+  const connectionStatus = document.getElementById('connection-status');
 
   const pRedNameEl = document.getElementById('player-red-name');
   const pBlueNameEl = document.getElementById('player-blue-name');
@@ -85,13 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 4. XỬ LÝ LƯỢT ĐI (MOVE EXECUTION)
+  // 4. XỬ LÝ NƯỚC ĐI (MOVE EXECUTION)
   function handleMoveExecution(from, to, moveInfo) {
-    if (currentMode === CONFIG.GAME_MODES.ONLINE) {
-      // Chế độ Online Socket.io -> Gửi lên Server xác thực
-      socketClient.sendMove(from, to);
-    } else if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-      // Chế độ Serverless Room (playhtml)
+    if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+      // Chế độ Online Serverless (playhtml)
+      if (currentTurn !== mySide) {
+        showToast('Chưa tới lượt đi của bạn!', 'warning');
+        return;
+      }
+
       const moveResult = board.applyMove(from, to);
 
       if (moveResult.capturedPiece) {
@@ -113,17 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (gameOverResult.isGameOver) {
         handleGameOver(gameOverResult.winner, gameOverResult.message);
+        playhtmlAdapter.notifyGameOver(gameOverResult.winner, gameOverResult.message);
       }
 
       currentTurn = nextSide;
       updateTurnUI();
       startLocalTimer();
 
-      // Đồng bộ nước đi sang cho đối thủ
+      // Đồng bộ nước đi cho đối thủ
       playhtmlAdapter.sendMove(from, to, board.grid, moveResult.capturedPiece, notation, nextSide);
       controls.setGameState(currentTurn, mySide, currentTurn === mySide);
     } else {
-      // Chế độ Offline / AI -> Xử lý trực tiếp tại Client
+      // Chế độ Offline Pass & Play / AI Bot
       const moveResult = board.applyMove(from, to);
 
       if (moveResult.capturedPiece) {
@@ -186,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const notationTo = GameRules.posToNotation(bestMove.to.row, bestMove.to.col);
     addMoveToHistory(GameRules.SIDES.BLUE, `${notationFrom} ➔ ${notationTo}${moveResult.capturedPiece ? ' (Ăn quân)' : ''}`);
 
-    // Kiểm tra kết thúc sau nước đi của AI
     const gameOverResult = ClientRules.checkGameOver(board.grid, GameRules.SIDES.RED);
     if (gameOverResult.isGameOver) {
       handleGameOver(gameOverResult.winner, gameOverResult.message);
@@ -196,13 +198,13 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTurn = GameRules.SIDES.RED;
     updateTurnUI();
     startLocalTimer();
-    controls.setGameState(currentTurn, mySide, true); // Mở lại tương tác
+    controls.setGameState(currentTurn, mySide, true);
   }
 
-  // 6. ĐỒNG HỒ ĐẾM NGƯỢC CỤC BỘ (CHO OFFLINE / AI)
-  function startLocalTimer() {
+  // 6. ĐỒNG HỒ ĐẾM NGƯỢC LƯỢT ĐI (TURN TIMER)
+  function startLocalTimer(timeLimit) {
     stopLocalTimer();
-    localTimeRemaining = CONFIG.DEFAULT_TURN_TIME;
+    localTimeRemaining = timeLimit || CONFIG.DEFAULT_TURN_TIME;
     updateTimerDisplay(localTimeRemaining);
 
     localTimerInterval = setInterval(() => {
@@ -216,7 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (localTimeRemaining <= 0) {
         stopLocalTimer();
         const winner = currentTurn === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-        handleGameOver(winner, `Phe ${currentTurn === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} hết thời gian lượt đi!`);
+        const msg = `Phe ${currentTurn === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã hết thời gian lượt đi!`;
+        handleGameOver(winner, msg);
+
+        if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+          playhtmlAdapter.notifyGameOver(winner, msg);
+        }
       }
     }, 1000);
   }
@@ -230,8 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateTimerDisplay(seconds) {
     if (!timerCountdownEl) return;
-    timerCountdownEl.textContent = seconds < 10 ? `0${seconds}` : seconds;
-    if (seconds <= 5) {
+    const s = Math.max(0, seconds);
+    timerCountdownEl.textContent = s < 10 ? `0${s}` : s;
+    if (s <= 5) {
       timerCountdownEl.classList.add('warning');
     } else {
       timerCountdownEl.classList.remove('warning');
@@ -267,7 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const msgEl = document.getElementById('game-over-message');
 
     if (titleEl) {
-      titleEl.textContent = winner === mySide ? '🎉 BẠN ĐÃ CHIẾN THẮNG!' : `🏆 PHE ${winner === GameRules.SIDES.RED ? 'ĐỎ' : 'XANH'} THẮNG!`;
+      if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+        titleEl.textContent = winner === mySide ? '🎉 BẠN ĐÃ CHIẾN THẮNG!' : (mySide ? '💔 BẠN ĐÃ THUA TRẬN!' : `🏆 PHE ${winner === GameRules.SIDES.RED ? 'ĐỎ' : 'XANH'} THẮNG!`);
+      } else {
+        titleEl.textContent = `🏆 PHE ${winner === GameRules.SIDES.RED ? 'ĐỎ' : 'XANH'} THẮNG!`;
+      }
       titleEl.style.color = winner === GameRules.SIDES.RED ? '#ef4444' : '#3b82f6';
     }
     if (msgEl) msgEl.textContent = message;
@@ -291,7 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
     controls.setGameState(currentTurn, currentMode === CONFIG.GAME_MODES.OFFLINE_2P ? null : mySide, true);
   }
 
-  // 8. KHỞI CHẠY CÁC CHẾ ĐỘ CHƠI
+  // 8. KHỞI TẠO VÀ ĐIỀU PHỐI CÁC CHẾ ĐỘ CHƠI
+
+  // 8.1. Chế độ 2 Người Offline (Pass & Play)
   function startOffline2P() {
     currentMode = CONFIG.GAME_MODES.OFFLINE_2P;
     mySide = GameRules.SIDES.RED;
@@ -305,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Bắt đầu chế độ 2 người chơi trên cùng máy (Pass & Play)', 'success');
   }
 
+  // 8.2. Chế độ Đấu với Máy (AI Bot)
   function startAiMode() {
     currentMode = CONFIG.GAME_MODES.AI;
     mySide = GameRules.SIDES.RED;
@@ -318,49 +333,62 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Bắt đầu trận đấu với Máy (AI Bot)', 'success');
   }
 
-  function startPlayhtmlRoom(roomId, isHost = false) {
+  // 8.3. Chế độ Online Serverless (playhtml)
+  async function startPlayhtmlRoom(roomId, isHost = false, options = {}) {
     currentMode = CONFIG.GAME_MODES.PLAYHTML;
     currentRoomId = roomId;
-    mySide = isHost ? GameRules.SIDES.RED : GameRules.SIDES.BLUE;
 
     const nickname = userNicknameInput.value.trim() || (isHost ? 'Chủ phòng' : 'Khách');
-    playerRedName = (isHost ? nickname : 'Chủ phòng') + ' (Đỏ)';
-    playerBlueName = (!isHost ? nickname : 'Đang chờ khách...') + ' (Xanh)';
-
-    pRedNameEl.textContent = playerRedName;
-    pBlueNameEl.textContent = playerBlueName;
-
     resetGameBoard();
     showView('arena');
 
-    // Khởi tạo playhtml adapter
-    playhtmlAdapter.init(roomId, nickname, isHost, board.grid);
+    // Khởi tạo adapter
+    const joinResult = await playhtmlAdapter.init(roomId, nickname, isHost, {
+      ...options,
+      initialBoard: board.grid
+    });
 
-    // Cập nhật link chia sẻ trên giao diện
+    mySide = joinResult.mySide;
+    const roomState = joinResult.roomState;
+
+    // Cập nhật thông tin phòng trên thanh chia sẻ
     const shareInput = document.getElementById('share-room-url');
-    if (shareInput) {
-      shareInput.value = playhtmlAdapter.getShareUrl();
-    }
+    const badgeEl = document.getElementById('room-code-badge');
+    if (shareInput) shareInput.value = playhtmlAdapter.getShareUrl();
+    if (badgeEl) badgeEl.textContent = `Mã: ${roomId}`;
 
-    startLocalTimer();
-    controls.setGameState(currentTurn, mySide, currentTurn === mySide);
+    // Cập nhật tên người chơi
+    playerRedName = (roomState.hostName || 'Chủ phòng') + ' (Đỏ)';
+    playerBlueName = (roomState.guestName || 'Đang chờ đối thủ...') + ' (Xanh)';
+    pRedNameEl.textContent = playerRedName;
+    pBlueNameEl.textContent = playerBlueName;
+
+    // Phân quyền tương tác
+    const isMyTurn = (currentTurn === mySide) && (mySide !== null);
+    controls.setGameState(currentTurn, mySide, isMyTurn);
 
     if (isHost) {
-      showToast('Đã tạo phòng Serverless! Hãy bấm "Sao Chép Link" để gửi cho bạn bè.', 'success');
+      showToast(`🎉 Đã tạo phòng #${roomId}! Hãy sao chép link mời gửi cho bạn bè.`, 'success');
     } else {
-      showToast(`Đã vào phòng Serverless #${roomId} (Phe Xanh)!`, 'success');
+      showToast(`Đã tham gia phòng #${roomId} (${joinResult.role}: ${mySide || 'Khán giả'})!`, 'success');
+    }
+
+    if (roomState.status === 'PLAYING') {
+      startLocalTimer(roomState.timePerTurn);
     }
   }
 
-  // 8.1 LẮNG NGHE SỰ KIỆN TỪ PLAYHTML ADAPTER
-  playhtmlAdapter.on('state:updated', ({ roomState }) => {
+  // 9. LẮNG NGHE SỰ KIỆN TỪ PLAYHTML ADAPTER
+  playhtmlAdapter.on('state:updated', ({ roomState, mySide: updatedSide, role }) => {
     if (currentMode !== CONFIG.GAME_MODES.PLAYHTML) return;
 
+    // Cập nhật bàn cờ
     if (roomState.board && roomState.board.length > 0) {
       board.setState(roomState.board);
       renderer.renderBoard(board.grid);
     }
 
+    // Hiển thị highlight nước đi vừa thực hiện
     if (roomState.lastMove) {
       renderer.highlightLastMove(roomState.lastMove.from, roomState.lastMove.to);
       if (roomState.lastMove.capturedPiece) {
@@ -368,34 +396,52 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         sounds.playMove();
       }
-      addMoveToHistory(roomState.lastMove.side, roomState.lastMove.notation);
+      if (moveHistoryListEl && moveHistoryListEl.children.length === 0 && roomState.moveHistory) {
+        // Tái tạo lịch sử nếu mới vào phòng
+        roomState.moveHistory.forEach(m => addMoveToHistory(m.side, m.notation));
+      }
     }
 
+    // Cập nhật tên người chơi
     if (roomState.hostName && pRedNameEl) {
       pRedNameEl.textContent = roomState.hostName + ' (Đỏ)';
     }
-    if (roomState.guestName && pBlueNameEl) {
-      pBlueNameEl.textContent = roomState.guestName + ' (Xanh)';
+    if (pBlueNameEl) {
+      pBlueNameEl.textContent = (roomState.guestName || 'Đang chờ đối thủ...') + ' (Xanh)';
     }
 
+    // Cập nhật điểm số
+    if (roomState.scores) {
+      scoreRed = roomState.scores.red || 0;
+      scoreBlue = roomState.scores.blue || 0;
+      updateScores();
+    }
+
+    // Lượt đi
     currentTurn = roomState.currentTurn || GameRules.SIDES.RED;
     updateTurnUI();
-    startLocalTimer();
 
-    const gameOverResult = ClientRules.checkGameOver(board.grid, currentTurn);
-    if (gameOverResult.isGameOver) {
-      handleGameOver(gameOverResult.winner, gameOverResult.message);
-      return;
+    // Đồng hồ
+    if (roomState.status === 'PLAYING') {
+      startLocalTimer(roomState.timePerTurn);
+    } else if (roomState.status === 'FINISHED') {
+      stopLocalTimer();
+      if (roomState.gameOver) {
+        handleGameOver(roomState.gameOver.winner, roomState.gameOver.message);
+      }
     }
 
-    controls.setGameState(currentTurn, mySide, currentTurn === mySide);
+    // Phân quyền click
+    mySide = updatedSide;
+    const canMove = (currentTurn === mySide) && (mySide !== null) && (roomState.status === 'PLAYING');
+    controls.setGameState(currentTurn, mySide, canMove);
   });
 
   playhtmlAdapter.on('chat:receive', (data) => {
     if (!chatMessagesEl) return;
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble';
-    bubble.innerHTML = `<div class="chat-sender ${data.side.toLowerCase()}">${data.sender}</div><div>${data.message}</div>`;
+    bubble.innerHTML = `<div class="chat-sender ${data.side ? data.side.toLowerCase() : 'spectator'}">${data.sender}</div><div>${data.message}</div>`;
     chatMessagesEl.appendChild(bubble);
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   });
@@ -405,173 +451,45 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTurn = data.currentTurn || GameRules.SIDES.RED;
     resetGameBoard();
     gameOverModal.classList.remove('active');
-    startLocalTimer();
-    controls.setGameState(currentTurn, mySide, currentTurn === mySide);
-    showToast('Phòng chơi đã được làm mới để bắt đầu ván mới!', 'success');
+    startLocalTimer(data.timePerTurn);
+    const canMove = (currentTurn === mySide) && (mySide !== null);
+    controls.setGameState(currentTurn, mySide, canMove);
+    showToast('Ván đấu mới đã bắt đầu!', 'success');
   });
 
-  // 9. LẮNG NGHE SỰ KIỆN TỪ SOCKET.IO
-  socketClient.on('connection_change', ({ isConnected }) => {
-    if (connectionStatus) {
-      if (isConnected) {
-        connectionStatus.textContent = 'Trực tuyến (Online)';
-        connectionStatus.className = 'status-indicator';
-      } else {
-        connectionStatus.textContent = 'Ngoại tuyến (Offline)';
-        connectionStatus.className = 'status-indicator offline';
-      }
-    }
-  });
-
-  socketClient.on('room:list', (rooms) => {
-    renderRoomList(rooms);
-  });
-
-  socketClient.on('room:joined', (data) => {
-    currentMode = CONFIG.GAME_MODES.ONLINE;
-    currentRoomId = data.roomId;
-    mySide = data.side || 'SPECTATOR';
-
-    playerRedName = data.room.playerRed ? data.room.playerRed.name : 'Chờ người chơi...';
-    playerBlueName = data.room.playerBlue ? data.room.playerBlue.name : 'Chờ người chơi...';
-    pRedNameEl.textContent = playerRedName;
-    pBlueNameEl.textContent = playerBlueName;
-
-    board.setState(data.room.board);
-    currentTurn = data.room.currentTurn;
-    renderer.renderBoard(board.grid);
-    updateTurnUI();
-
-    controls.setGameState(currentTurn, mySide === 'SPECTATOR' ? null : mySide, mySide !== 'SPECTATOR');
-    showView('arena');
-    createRoomModal.classList.remove('active');
-    showToast(`Đã tham gia phòng #${data.roomId} (${data.role}: ${mySide || 'Khán giả'})`, 'success');
-  });
-
-  socketClient.on('game:start', (data) => {
-    board.setState(data.room.board);
-    currentTurn = data.room.currentTurn;
-    renderer.renderBoard(board.grid);
-    updateTurnUI();
-    controls.setGameState(currentTurn, mySide === 'SPECTATOR' ? null : mySide, mySide !== 'SPECTATOR');
-    showToast(data.message, 'success');
-  });
-
-  socketClient.on('game:tick', ({ turnTimeRemaining, currentTurn: serverTurn }) => {
-    currentTurn = serverTurn;
-    updateTurnUI();
-    updateTimerDisplay(turnTimeRemaining);
-    if (turnTimeRemaining <= 5 && turnTimeRemaining > 0) {
-      sounds.playWarning();
-    }
-  });
-
-  socketClient.on('game:move_success', (data) => {
-    const { moveRecord, board: serverBoard, nextTurn, turnTimeRemaining } = data;
-    board.setState(serverBoard);
-    renderer.renderBoard(board.grid);
-    renderer.highlightLastMove(moveRecord.from, moveRecord.to);
-
-    if (moveRecord.capturedPiece) {
-      sounds.playCapture();
-    } else {
-      sounds.playMove();
-    }
-
-    addMoveToHistory(moveRecord.side, moveRecord.notation);
-    currentTurn = nextTurn;
-    updateTurnUI();
-    updateTimerDisplay(turnTimeRemaining);
-    controls.setGameState(currentTurn, mySide === 'SPECTATOR' ? null : mySide, mySide !== 'SPECTATOR');
-  });
-
-  socketClient.on('game:over', (data) => {
-    handleGameOver(data.winner, data.message);
-  });
-
-  socketClient.on('game:rematch_response', (data) => {
+  playhtmlAdapter.on('rematch:waiting', (data) => {
     showToast(data.message, 'info');
   });
 
-  socketClient.on('game:rematch_start', (data) => {
-    board.setState(data.room.board);
-    currentTurn = data.room.currentTurn;
-    renderer.renderBoard(board.grid);
-    renderer.clearHighlights();
-    updateTurnUI();
-    gameOverModal.classList.remove('active');
-    showToast(data.message, 'success');
-  });
+  // 10. GÁN SỰ KIỆN CHO CÁC NÚT BẤM VÀ FORM
 
-  socketClient.on('chat:receive', (data) => {
-    if (!chatMessagesEl) return;
-    const bubble = document.createElement('div');
-    bubble.className = 'chat-bubble';
-    bubble.innerHTML = `<div class="chat-sender ${data.side.toLowerCase()}">${data.sender}</div><div>${data.message}</div>`;
-    chatMessagesEl.appendChild(bubble);
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-  });
-
-  socketClient.on('error:message', (err) => {
-    showToast(err.message, 'error');
-  });
-
-  // Render danh sách phòng trong Lobby
-  function renderRoomList(rooms) {
-    const roomListContainer = document.getElementById('room-list');
-    if (!roomListContainer) return;
-    roomListContainer.innerHTML = '';
-
-    if (!rooms || rooms.length === 0) {
-      roomListContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; grid-column: 1/-1;">Chưa có phòng nào đang mở. Hãy tạo phòng mới ngay!</div>';
-      return;
-    }
-
-    rooms.forEach(r => {
-      const card = document.createElement('div');
-      card.className = 'room-card';
-      const isFull = r.playerCount >= 2;
-
-      card.innerHTML = `
-        <div class="room-card-header">
-          <span class="room-name">${r.name}</span>
-          <span class="room-badge ${r.status.toLowerCase()}">${r.status === 'WAITING' ? 'Chờ' : 'Đang đấu'}</span>
-        </div>
-        <div class="room-players">
-          ${r.playerRed || 'Trống'} (Đỏ) VS ${r.playerBlue || 'Trống'} (Xanh)
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-          <span style="font-size: 0.75rem; color: var(--text-muted);">${r.hasPassword ? '🔒 Có mật khẩu' : '🔓 Công khai'}</span>
-          <button class="btn btn-primary" style="padding: 4px 12px; font-size: 0.8rem;" data-room-id="${r.id}">
-            ${isFull ? 'Xem (Spectate)' : 'Vào Chơi'}
-          </button>
-        </div>
-      `;
-
-      card.querySelector('button').addEventListener('click', () => {
-        const playerName = userNicknameInput.value.trim() || 'Người chơi';
-        let password = '';
-        if (r.hasPassword) {
-          password = prompt('Nhập mật khẩu phòng:') || '';
-        }
-        socketClient.joinRoom(r.id, playerName, password);
-      });
-
-      roomListContainer.appendChild(card);
-    });
-  }
-
-  // 10. GÁN SỰ KIỆN CHO CÁC NÚT BẤM (BUTTON LISTENERS)
+  // Chế độ Offline Pass & Play
   document.getElementById('btn-mode-offline')?.addEventListener('click', startOffline2P);
+
+  // Chế độ AI Bot
   document.getElementById('btn-mode-ai')?.addEventListener('click', startAiMode);
 
-  // Tạo phòng Serverless (playhtml)
+  // Mở modal tạo phòng Online playhtml
   document.getElementById('btn-mode-playhtml')?.addEventListener('click', () => {
-    const randomCode = 'ott-' + Math.random().toString(36).substring(2, 8);
-    startPlayhtmlRoom(randomCode, true);
+    createRoomModal.classList.add('active');
   });
 
-  // Tham gia phòng bằng mã hoặc link
+  document.getElementById('btn-close-create-modal')?.addEventListener('click', () => {
+    createRoomModal.classList.remove('active');
+  });
+
+  // Submit form tạo phòng mới
+  document.getElementById('form-create-room')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const roomName = document.getElementById('input-room-name')?.value.trim() || 'Phòng Chiến Thuật';
+    const timePerTurn = parseInt(document.getElementById('select-time-turn')?.value, 10) || 30;
+    const randomCode = 'ott-' + Math.random().toString(36).substring(2, 8);
+
+    createRoomModal.classList.remove('active');
+    startPlayhtmlRoom(randomCode, true, { roomName, timePerTurn });
+  });
+
+  // Vào phòng bằng mã hoặc dán link mời
   document.getElementById('btn-join-room-code')?.addEventListener('click', () => {
     const inputVal = document.getElementById('input-join-room-code')?.value.trim();
     if (!inputVal) {
@@ -590,60 +508,34 @@ document.addEventListener('DOMContentLoaded', () => {
     startPlayhtmlRoom(roomId, false);
   });
 
-  // Sao chép link phòng
+  // Sao chép link mời bạn bè
   document.getElementById('btn-copy-room-link')?.addEventListener('click', () => {
     const shareInput = document.getElementById('share-room-url');
     if (shareInput && shareInput.value) {
-      navigator.clipboard.writeText(shareInput.value).then(() => {
-        showToast('📋 Đã sao chép link mời bạn bè vào bộ nhớ tạm!', 'success');
-      }).catch(() => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareInput.value).then(() => {
+          showToast('📋 Đã sao chép link mời vào bộ nhớ tạm!', 'success');
+        }).catch(() => {
+          shareInput.select();
+          document.execCommand('copy');
+          showToast('📋 Đã sao chép link mời!', 'success');
+        });
+      } else {
         shareInput.select();
         document.execCommand('copy');
-        showToast('📋 Đã sao chép link mời bạn bè!', 'success');
-      });
+        showToast('📋 Đã sao chép link mời!', 'success');
+      }
     }
   });
 
-  document.getElementById('btn-quick-match')?.addEventListener('click', () => {
-    if (!socketClient.isConnected) {
-      showToast('Không có kết nối tới máy chủ Online. Hãy dùng nút "Tạo Phòng Serverless" hoặc chơi Offline/AI!', 'error');
-      return;
-    }
-    const playerName = userNicknameInput.value.trim() || 'Người chơi';
-    socketClient.quickMatch(playerName);
-  });
-
-  document.getElementById('btn-open-create-modal')?.addEventListener('click', () => {
-    createRoomModal.classList.add('active');
-  });
-
-  document.getElementById('btn-close-create-modal')?.addEventListener('click', () => {
-    createRoomModal.classList.remove('active');
-  });
-
-  document.getElementById('form-create-room')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const roomName = document.getElementById('input-room-name').value.trim();
-    const password = document.getElementById('input-room-password').value.trim();
-    const timePerTurn = parseInt(document.getElementById('select-time-turn').value, 10) || 30;
-    const playerName = userNicknameInput.value.trim() || 'Chủ phòng';
-
-    if (socketClient.isConnected) {
-      socketClient.createRoom(roomName, playerName, password, timePerTurn);
-    } else {
-      createRoomModal.classList.remove('active');
-      const cleanId = roomName.toLowerCase().replace(/[^a-z0-9]/g, '-') || ('ott-' + Math.random().toString(36).substring(2, 8));
-      startPlayhtmlRoom(cleanId, true);
-    }
-  });
-
+  // Đầu hàng
   document.getElementById('btn-surrender')?.addEventListener('click', () => {
     if (confirm('Bạn có chắc chắn muốn đầu hàng ván đấu này?')) {
-      if (currentMode === CONFIG.GAME_MODES.ONLINE) {
-        socketClient.surrender();
-      } else if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+      if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
         const winner = mySide === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-        handleGameOver(winner, `Phe ${mySide === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã chủ động đầu hàng!`);
+        const msg = `Phe ${mySide === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã chủ động đầu hàng!`;
+        playhtmlAdapter.notifyGameOver(winner, msg);
+        handleGameOver(winner, msg);
       } else {
         const winner = currentTurn === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
         handleGameOver(winner, `Phe ${currentTurn === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã chủ động đầu hàng!`);
@@ -651,23 +543,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Rời phòng về sảnh chờ
   document.getElementById('btn-leave-arena')?.addEventListener('click', () => {
     if (confirm('Rời khỏi trận đấu và quay về sảnh chính?')) {
-      if (currentMode === CONFIG.GAME_MODES.ONLINE) {
-        socketClient.leaveRoom();
+      if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+        playhtmlAdapter.leaveRoom();
       }
       stopLocalTimer();
       showView('lobby');
     }
   });
 
+  // Đấu lại (Rematch)
   document.getElementById('btn-rematch')?.addEventListener('click', () => {
-    if (currentMode === CONFIG.GAME_MODES.ONLINE) {
-      socketClient.requestRematch();
-      showToast('Đã gửi yêu cầu đấu lại tới đối thủ!', 'info');
-    } else if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+    if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
       const freshBoard = new ClientBoard();
-      playhtmlAdapter.resetGame(freshBoard.grid);
+      playhtmlAdapter.requestRematch(freshBoard.grid);
     } else {
       gameOverModal.classList.remove('active');
       resetGameBoard();
@@ -680,11 +571,13 @@ document.addEventListener('DOMContentLoaded', () => {
     showView('lobby');
   });
 
+  // Bật/tắt âm thanh
   document.getElementById('btn-sound-toggle')?.addEventListener('click', (e) => {
     const isMuted = sounds.toggleMute();
     e.currentTarget.textContent = isMuted ? '🔇 Tắt tiếng' : '🔊 Âm thanh';
   });
 
+  // Hướng dẫn luật chơi
   document.getElementById('btn-rules-modal')?.addEventListener('click', () => {
     rulesModal.classList.add('active');
   });
@@ -693,13 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
     rulesModal.classList.remove('active');
   });
 
-  // Chat message send
+  // Gửi tin nhắn Chat
   const sendChatMessage = () => {
     const text = chatInputEl.value.trim();
     if (!text) return;
-    if (currentMode === CONFIG.GAME_MODES.ONLINE) {
-      socketClient.sendChat(text);
-    } else if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
+    if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
       playhtmlAdapter.sendChat(text);
     } else {
       // Local chat echo
@@ -717,15 +608,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendChatMessage();
   });
 
-  // Tự động tham gia nếu URL có chứa ?room=
+  // 11. TỰ ĐỘNG THAM GIA PHÒNG NẾU URL CHỨA ?room=
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
   if (roomParam) {
     setTimeout(() => {
       startPlayhtmlRoom(roomParam, false);
-    }, 200);
+    }, 300);
   }
-
-  // Kết nối socket lúc khởi động
-  socketClient.connect();
 });

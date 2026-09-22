@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OTTv2 - Cờ Oẳn Tù Tì 9x9 Multiplayer</title>
+  <title>OTTv2 - Cờ Oẳn Tù Tì 9x9 Multiplayer (playhtml Serverless)</title>
   
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
@@ -18,17 +18,17 @@
       <div class="logo-icon">⚔️</div>
       <div class="logo-text">
         <h1>OTTV2 MULTIPLAYER</h1>
-        <p>Cờ Oẳn Tù Tì Chiến Thuật 9x9</p>
+        <p>Cờ Oẳn Tù Tì Chiến Thuật 9x9 • playhtml Serverless</p>
       </div>
     </div>
 
     <div class="header-user-info">
       <div class="user-badge">
         <span class="user-avatar">👤</span>
-        <input type="text" id="user-nickname" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.82rem;" value="Gamer123" placeholder="Tên của bạn">
+        <input type="text" id="user-nickname" class="form-control" style="width: 130px; padding: 4px 8px; font-size: 0.82rem;" value="Gamer123" placeholder="Tên của bạn">
       </div>
-      <div class="user-badge">
-        <span id="connection-status" class="status-indicator offline"></span>
+      <div class="user-badge" title="Đồng bộ thời gian thực qua playhtml Cloud & BroadcastChannel">
+        <span id="connection-status" class="status-indicator">🌐 playhtml Ready</span>
       </div>
       <button id="btn-rules-modal" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">📖 Luật Chơi</button>
       <button id="btn-sound-toggle" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">🔊 Âm thanh</button>
@@ -42,55 +42,46 @@
     <section id="lobby-view" class="view-section active">
       <div class="lobby-header">
         <h2>Chọn Chế Độ Chơi</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Chiến thuật 9x9 - Di chuyển 8 hướng - Không cần cơ sở dữ liệu</p>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Đồng bộ thời gian thực qua playhtml PartyKit & CRDT • Không cần máy chủ riêng</p>
       </div>
 
-      <!-- Lựa chọn chế độ chơi -->
+      <!-- Lựa chọn chế độ chơi chính -->
       <div class="mode-cards">
+        <div class="mode-card highlight" id="btn-mode-playhtml">
+          <div class="mode-icon">🌐</div>
+          <h3>Tạo Phòng Online (playhtml)</h3>
+          <p>Tạo phòng chơi trực tuyến, lấy Link mời bạn bè hoặc chia sẻ mã phòng để cùng đấu cờ.</p>
+          <button class="btn btn-success" style="width: 100%; margin-top: auto;">➕ Tạo Phòng Mới</button>
+        </div>
+
         <div class="mode-card" id="btn-mode-offline">
           <div class="mode-icon">👥</div>
-          <h3>Chơi 2 Người Offline</h3>
-          <p>Chơi đối kháng Pass & Play trên cùng một máy tính hoặc điện thoại.</p>
-          <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Chơi Ngay</button>
+          <h3>Chơi 2 Người Cùng Máy</h3>
+          <p>Chơi đối kháng trực tiếp Pass & Play trên cùng một máy tính, tablet hoặc điện thoại.</p>
+          <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Chơi Pass & Play</button>
         </div>
 
         <div class="mode-card" id="btn-mode-ai">
           <div class="mode-icon">🤖</div>
           <h3>Đấu Với Máy (AI Bot)</h3>
-          <p>Luyện tập kỹ năng chiến thuật đối đầu với Bot máy tính thông minh.</p>
+          <p>Luyện tập kỹ năng và thế cờ Oẳn Tù Tì đối đầu với Bot máy tính thông minh.</p>
           <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Đấu Với Bot</button>
-        </div>
-
-        <div class="mode-card highlight" id="btn-mode-playhtml">
-          <div class="mode-icon">🌐</div>
-          <h3>Tạo Phòng Serverless</h3>
-          <p>Chơi Online qua link mời (playhtml) trực tiếp trên GitHub Pages không cần Server!</p>
-          <button class="btn btn-success" style="width: 100%; margin-top: auto;">➕ Tạo Phòng & Lấy Link</button>
-        </div>
-
-        <div class="mode-card" id="btn-quick-match">
-          <div class="mode-icon">⚡</div>
-          <h3>Ghép Nhanh Socket.io</h3>
-          <p>Tự động tìm kiếm đối thủ trực tuyến đang chờ ghép phòng trên Server Node.js.</p>
-          <button class="btn btn-secondary" style="width: 100%; margin-top: auto;">Tìm Trận Nhanh</button>
         </div>
       </div>
 
       <!-- Khung Vào Phòng Bằng Mã / Link Nhanh -->
-      <div class="serverless-join-container" style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center; background: var(--bg-card); padding: 14px 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); flex-wrap: wrap;">
-        <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">🔗 Vào Phòng Bằng Mã / Link:</span>
-        <input type="text" id="input-join-room-code" class="form-control" placeholder="Dán link hoặc nhập mã (VD: ott-1234)" style="max-width: 320px; font-size: 0.85rem;">
-        <button id="btn-join-room-code" class="btn btn-primary" style="padding: 8px 18px; font-size: 0.85rem;">Tham Gia</button>
-      </div>
-
-      <!-- Danh sách phòng Online -->
-      <div class="room-section">
-        <div class="room-section-header">
-          <h3 style="font-size: 1.15rem; font-weight: 700;">Danh Sách Phòng Trực Tuyến</h3>
-          <button id="btn-open-create-modal" class="btn btn-primary">➕ Tạo Phòng Mới</button>
-        </div>
-        <div id="room-list" class="room-list-grid">
-          <!-- Room cards render động -->
+      <div class="serverless-join-container" style="margin-top: 10px; background: var(--bg-card); padding: 20px 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); text-align: center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🔗 Tham Gia Phòng Bằng Mã Hoặc Link Mời
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 14px;">
+          Nhập mã phòng 6 ký tự (VD: <code>ott-7x2a</code>) hoặc dán đường link phòng mà bạn bè đã gửi cho bạn:
+        </p>
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="input-join-room-code" class="form-control" placeholder="Nhập mã phòng hoặc dán link URL..." style="max-width: 360px; font-size: 0.9rem; padding: 9px 14px;">
+          <button id="btn-join-room-code" class="btn btn-primary" style="padding: 9px 22px; font-size: 0.9rem; font-weight: 600;">
+            🚀 Vào Phòng Ngay
+          </button>
         </div>
       </div>
     </section>
@@ -99,10 +90,11 @@
     <section id="arena-view" class="view-section">
       <!-- Thanh chia sẻ link phòng Serverless (Hiển thị khi chơi phòng playhtml) -->
       <div id="room-share-bar" class="room-share-bar" style="display: none; margin-bottom: 16px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); padding: 10px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           <span style="font-size: 1.2rem;">🔗</span>
-          <span style="font-weight: 600; font-size: 0.85rem; color: #93c5fd;">Link Mời Đối Thủ:</span>
-          <input type="text" id="share-room-url" class="form-control" readonly style="width: 260px; padding: 4px 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4);" value="">
+          <span style="font-weight: 700; font-size: 0.85rem; color: #93c5fd;" id="room-code-badge">Phòng: OTT</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">| Link mời:</span>
+          <input type="text" id="share-room-url" class="form-control" readonly style="width: 250px; padding: 4px 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4);" value="">
         </div>
         <button id="btn-copy-room-link" class="btn btn-primary" style="padding: 5px 14px; font-size: 0.8rem;">📋 Sao Chép Link</button>
       </div>
@@ -177,31 +169,29 @@
 
   <!-- 3. MODALS -->
 
-  <!-- Modal Tạo Phòng -->
+  <!-- Modal Tạo Phòng Online playhtml -->
   <div id="create-room-modal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Tạo Phòng Chơi Mới</h2>
+        <h2>Tạo Phòng Online Mới (playhtml)</h2>
         <button id="btn-close-create-modal" class="modal-close">&times;</button>
       </div>
       <form id="form-create-room">
         <div class="form-group">
           <label for="input-room-name">Tên Phòng</label>
-          <input type="text" id="input-room-name" class="form-control" placeholder="Ví dụ: Đại Chiến OTT" required maxlength="30">
+          <input type="text" id="input-room-name" class="form-control" placeholder="Ví dụ: Đại Chiến OTT" required maxlength="30" value="Đại Chiến OTT">
         </div>
         <div class="form-group">
-          <label for="input-room-password">Mật khẩu (Tùy chọn, để trống nếu công khai)</label>
-          <input type="password" id="input-room-password" class="form-control" placeholder="Để trống nếu không cần">
-        </div>
-        <div class="form-group">
-          <label for="select-time-turn">Thời gian mỗi lượt (Giây)</label>
+          <label for="select-time-turn">Thời gian mỗi lượt</label>
           <select id="select-time-turn" class="form-control">
             <option value="15">15 Giây (Chớp nhoáng)</option>
             <option value="30" selected>30 Giây (Chuẩn)</option>
             <option value="60">60 Giây (Thong thả)</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Tạo & Vào Phòng</button>
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px; font-weight: 700; padding: 10px;">
+          ➕ Khởi Tạo Phòng & Lấy Link Mời
+        </button>
       </form>
     </div>
   </div>
@@ -249,38 +239,32 @@
 
   <!-- Footer -->
   <footer class="app-footer">
-    <p>OTTv2 Multiplayer © 2026 - Đồ Án Bài Tập Lớn Web (Chạy In-Memory không cần Database)</p>
+    <p>OTTv2 Multiplayer © 2026 • Serverless Real-Time (playhtml Cloud & CRDT)</p>
   </footer>
 
   <!-- 4. SCRIPTS LIÊN KẾT -->
-  <!-- Socket.io client (Tự động tải từ server khi chạy online, hoặc fallback dự phòng) -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
   <!-- Shared Rules (Tương thích cả Client và Server) -->
   <script src="../shared/gameRules.js"></script>
   <script src="shared/gameRules.js"></script>
 
   <!-- Core Modules -->
-  <script src="js/core/constants.js?v=2.0"></script>
-  <script src="js/core/piece.js?v=2.0"></script>
-  <script src="js/core/board.js?v=2.0"></script>
-  <script src="js/core/rules.js?v=2.0"></script>
+  <script src="js/core/constants.js?v=2.1"></script>
+  <script src="js/core/piece.js?v=2.1"></script>
+  <script src="js/core/board.js?v=2.1"></script>
+  <script src="js/core/rules.js?v=2.1"></script>
 
   <!-- UI & Sound Modules -->
-  <script src="js/ui/soundManager.js?v=2.0"></script>
-  <script src="js/ui/boardRenderer.js?v=2.0"></script>
-  <script src="js/ui/controls.js?v=2.0"></script>
+  <script src="js/ui/soundManager.js?v=2.1"></script>
+  <script src="js/ui/boardRenderer.js?v=2.1"></script>
+  <script src="js/ui/controls.js?v=2.1"></script>
 
-  <!-- Network Modules -->
-  <!-- Thư viện playhtml Serverless Multiplayer (PartyKit & Yjs) -->
+  <!-- Network Modules (playhtml Serverless Engine) -->
   <script src="https://unpkg.com/playhtml@latest/dist/playhtml.min.js"></script>
-  <script src="js/network/playhtmlAdapter.js?v=2.0"></script>
-  <script src="js/network/socketClient.js?v=2.0"></script>
-  <script src="js/network/playfullAdapter.js?v=2.0"></script>
+  <script src="js/network/playhtmlAdapter.js?v=2.1"></script>
+  <script src="js/network/playfullAdapter.js?v=2.1"></script>
 
   <!-- Main Controller -->
-  <script src="js/main.js?v=2.0"></script>
+  <script src="js/main.js?v=2.1"></script>
 
 </body>
 </html>
