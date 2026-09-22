@@ -69,6 +69,60 @@ app.get('/api/rooms/:id', (req, res) => {
   });
 });
 
+// API Đăng ký phòng mới từ Client (Đồng bộ đa máy / Cross-Device)
+app.post('/api/rooms', (req, res) => {
+  try {
+    const room = roomController.registerOrUpdateRoom(req.body);
+    res.status(201).json({
+      success: true,
+      message: 'Đăng ký phòng thành công!',
+      room: room.toSummaryJSON()
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// API Cập nhật trạng thái phòng (Game Start, Move, Game Over, Scores)
+app.put('/api/rooms/:id', (req, res) => {
+  try {
+    const room = roomController.registerOrUpdateRoom({ ...req.body, id: req.params.id });
+    res.json({
+      success: true,
+      message: 'Cập nhật phòng thành công!',
+      room: room.toSummaryJSON()
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// API Nhịp tim duy trì phòng (Heartbeat)
+app.post('/api/rooms/:id/heartbeat', (req, res) => {
+  const touched = roomController.touchRoom(req.params.id);
+  if (touched) {
+    res.json({ success: true, message: 'Heartbeat OK' });
+  } else {
+    // Nếu phòng chưa có trên server (hoặc vừa khởi động lại server), đăng ký lại từ body nếu có
+    if (req.body && Object.keys(req.body).length > 0) {
+      const room = roomController.registerOrUpdateRoom({ ...req.body, id: req.params.id });
+      res.json({ success: true, message: 'Room re-registered via heartbeat', room: room.toSummaryJSON() });
+    } else {
+      res.status(404).json({ success: false, message: 'Phòng không tồn tại!' });
+    }
+  }
+});
+
+// API Đóng/Xoá phòng
+app.delete('/api/rooms/:id', (req, res) => {
+  const deleted = roomController.deleteRoom(req.params.id);
+  res.json({
+    success: true,
+    deleted,
+    message: deleted ? 'Đã xoá phòng thành công!' : 'Phòng không tồn tại.'
+  });
+});
+
 // Điều hướng trang mặc định
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientPath, 'index.html'));

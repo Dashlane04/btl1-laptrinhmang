@@ -547,7 +547,7 @@ class PlayhtmlAdapter {
     return url.toString();
   }
 
-  // --- 7. GLOBAL ROOM DISCOVERY BEACON (SẢNH CHỜ TOÀN CỤC) ---
+  // --- 7. GLOBAL ROOM DISCOVERY BEACON (SẢNH CHỜ TOÀN CỤC & ĐA MÁY) ---
   _publishRoomBeacon() {
     if (!this.roomState || !this.roomId) return;
     try {
@@ -571,18 +571,25 @@ class PlayhtmlAdapter {
         heartbeat: now
       };
 
-      // 1. Lưu vào LocalStorage
+      // 1. Lưu vào LocalStorage (Cùng trình duyệt/đa tab)
       const registryRaw = localStorage.getItem('ottv2_global_rooms');
       const registry = registryRaw ? JSON.parse(registryRaw) : {};
       registry[this.roomId] = summary;
       localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
 
-      // 2. Broadcast qua Channel discovery
+      // 2. Broadcast qua Channel discovery (Cùng máy)
       if (typeof BroadcastChannel !== 'undefined') {
         const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
         discChannel.postMessage({ type: 'ROOM_ANNOUNCE', room: summary });
         discChannel.close();
       }
+
+      // 3. Đồng bộ lên Central Server (Cho máy khác / Đa thiết bị qua Internet/LAN)
+      fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(summary)
+      }).catch(() => {});
     } catch (e) {}
   }
 
@@ -600,16 +607,39 @@ class PlayhtmlAdapter {
         discChannel.postMessage({ type: 'ROOM_CLOSED', roomId: this.roomId });
         discChannel.close();
       }
+
+      // Xoá trên Central Server để máy khác thấy phòng đóng ngay lập tức
+      fetch(`/api/rooms/${encodeURIComponent(this.roomId)}`, {
+        method: 'DELETE'
+      }).catch(() => {});
     } catch (e) {}
   }
 
   _startHeartbeat() {
     this._stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
-      if (this.role === 'HOST' && this.roomState) {
+      if (this.role === 'HOST' && this.roomState && this.roomId) {
         this._publishRoomBeacon();
+
+        // Gửi nhịp tim riêng lên Server
+        fetch(`/api/rooms/${encodeURIComponent(this.roomId)}/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: this.roomId,
+            name: this.roomState.roomName,
+            status: this.roomState.status,
+            hostName: this.roomState.hostName,
+            guestName: this.roomState.guestName,
+            spectatorCount: (this.roomState.spectators || []).length,
+            timePerTurn: this.roomState.timePerTurn,
+            gameStartedAt: this.roomState.gameStartedAt,
+            finishedAt: this.roomState.finishedAt,
+            scores: this.roomState.scores
+          })
+        }).catch(() => {});
       }
-    }, 4000);
+    }, 3500);
   }
 
   _stopHeartbeat() {

@@ -213,7 +213,7 @@ class Room {
       status: this.status, // 'WAITING' | 'PLAYING' | 'FINISHED'
       playerCount,
       maxPlayers: 2,
-      spectatorCount: this.spectators.length,
+      spectatorCount: this.spectatorCountOverride !== undefined ? this.spectatorCountOverride : this.spectators.length,
       playerRed: this.playerRed ? { name: this.playerRed.name, score: this.playerRed.score || 0 } : null,
       playerBlue: this.playerBlue ? { name: this.playerBlue.name, score: this.playerBlue.score || 0 } : null,
       timePerTurn: this.timePerTurn,

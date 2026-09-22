@@ -34,6 +34,82 @@ class RoomController {
   }
 
   /**
+   * Đăng ký hoặc cập nhật phòng từ Client (Hỗ trợ đa máy / Cross-Device Sync)
+   * @param {Object} data 
+   * @returns {Room}
+   */
+  registerOrUpdateRoom(data = {}) {
+    const roomId = data.id || data.roomId;
+    if (!roomId) throw new Error('Mã phòng không hợp lệ!');
+
+    let room = this.rooms.get(roomId);
+    if (!room) {
+      if (this.rooms.size >= config.MAX_ROOMS) {
+        throw new Error('Hệ thống đã đạt giới hạn số phòng tối đa!');
+      }
+      room = new Room(roomId, data.name || data.roomName, data.password || '', data.timePerTurn || config.DEFAULT_TURN_TIME);
+      if (data.createdAt) room.createdAt = data.createdAt;
+      this.rooms.set(roomId, room);
+    }
+
+    // Cập nhật thông tin phòng
+    if (data.name) room.name = data.name;
+    if (data.status) room.status = data.status;
+    if (data.timePerTurn) room.timePerTurn = parseInt(data.timePerTurn, 10) || room.timePerTurn;
+    if (data.gameStartedAt !== undefined) room.gameStartedAt = data.gameStartedAt;
+    if (data.finishedAt !== undefined) room.finishedAt = data.finishedAt;
+    if (data.scores) room.scores = { ...room.scores, ...data.scores };
+
+    // Cập nhật thông tin người chơi
+    if (data.playerRed) {
+      room.playerRed = typeof data.playerRed === 'string' ? { name: data.playerRed, score: 0 } : data.playerRed;
+    } else if (data.hostName) {
+      room.playerRed = { name: data.hostName, score: data.scores?.red || 0 };
+    }
+
+    if (data.playerBlue !== undefined) {
+      room.playerBlue = typeof data.playerBlue === 'string' ? { name: data.playerBlue, score: 0 } : data.playerBlue;
+    } else if (data.guestName !== undefined) {
+      room.playerBlue = data.guestName ? { name: data.guestName, score: data.scores?.blue || 0 } : null;
+    }
+
+    if (data.spectatorCount !== undefined) {
+      room.spectatorCountOverride = data.spectatorCount;
+    }
+
+    room.lastActivityAt = Date.now();
+    return room;
+  }
+
+  /**
+   * Cập nhật nhịp tim (Heartbeat) của phòng
+   * @param {string} roomId 
+   * @returns {boolean}
+   */
+  touchRoom(roomId) {
+    const room = this.rooms.get(roomId);
+    if (room) {
+      room.lastActivityAt = Date.now();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Xoá phòng thủ công khi chủ phòng đóng phòng
+   * @param {string} roomId 
+   * @returns {boolean}
+   */
+  deleteRoom(roomId) {
+    const room = this.rooms.get(roomId);
+    if (room) {
+      room.stopTimer();
+      return this.rooms.delete(roomId);
+    }
+    return false;
+  }
+
+  /**
    * Lấy phòng theo ID
    * @param {string} roomId 
    * @returns {Room|null}
