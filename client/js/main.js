@@ -768,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 5000);
 
-    // Lắng nghe BroadcastChannel Discovery
+    // Lắng nghe BroadcastChannel Discovery (Cùng máy / Đa tab)
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         const lobbyChannel = new BroadcastChannel('ottv2_lobby_discovery');
@@ -779,6 +779,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       } catch (e) {}
     }
+
+    // Lắng nghe sự kiện cập nhật phòng thời gian thực qua playhtml Cloud
+    window.addEventListener('ottv2:rooms_updated', () => {
+      fetchAndRenderLobbyRooms();
+    });
+
+    // Tự động kích hoạt khi module playhtml tải xong
+    window.addEventListener('playhtml:ready', () => {
+      PlayhtmlAdapter.initGlobalLobby();
+      fetchAndRenderLobbyRooms();
+    });
 
     // Sự kiện Filter Tabs
     document.querySelectorAll('#room-filter-tabs .filter-tab').forEach(tab => {

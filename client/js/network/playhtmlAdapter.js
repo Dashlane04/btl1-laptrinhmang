@@ -1,8 +1,13 @@
 /**
  * PlayhtmlAdapter (Serverless P2P Real-Time Engine):
- * Kết hợp WebRTC DataChannel (PeerJS) và BroadcastChannel cho phép kết nối thời gian thực
- * giữa 2 MÁY KHÁC NHAU trên toàn cầu mà KHÔNG CẦN backend server!
+ * Kết hợp playhtml Cloud (PartyKit & CRDT), WebRTC DataChannel (PeerJS) và BroadcastChannel
+ * cho phép kết nối thời gian thực và đồng bộ Sảnh chờ (Lobby) + Phòng chơi (Arena)
+ * giữa các máy trên toàn cầu hoàn toàn Serverless!
  */
+
+// Bộ nhớ đệm danh sách phòng toàn cầu được đồng bộ qua playhtml Cloud
+const GLOBAL_CLOUD_ROOMS = new Map();
+
 class PlayhtmlAdapter {
   constructor() {
     this.roomId = null;
@@ -38,7 +43,10 @@ class PlayhtmlAdapter {
     // 1. Khởi tạo BroadcastChannel (cho cùng máy / đa tab)
     this._initBroadcastChannel();
 
-    // 2. Khởi tạo WebRTC PeerJS (cho 2 máy khác nhau qua Internet)
+    // 2. Khởi tạo playhtml Arena (nếu thư viện playhtml đã tải)
+    this._initPlayhtmlArena();
+
+    // 3. Khởi tạo WebRTC PeerJS (cho 2 máy khác nhau qua Internet)
     if (isHost) {
       await this._initAsHost(options);
     } else {
@@ -396,6 +404,7 @@ class PlayhtmlAdapter {
     const updated = {
       ...this.roomState,
       status: 'FINISHED',
+      finishedAt: Date.now(),
       scores,
       gameOver: {
         winner,
@@ -452,6 +461,8 @@ class PlayhtmlAdapter {
         board: freshBoardGrid,
         currentTurn: 'RED',
         turnStartTime: Date.now(),
+        gameStartedAt: Date.now(),
+        finishedAt: null,
         lastMove: null,
         moveHistory: [],
         rematchVotes: [],
@@ -527,6 +538,14 @@ class PlayhtmlAdapter {
     } catch (e) {}
   }
 
+  _initPlayhtmlArena() {
+    if (typeof window !== 'undefined' && window.playhtml && typeof window.playhtml.init === 'function') {
+      try {
+        window.playhtml.init({ room: `ottv2-match-${this.roomId}` });
+      } catch (e) {}
+    }
+  }
+
   _saveLocalState() {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.roomState));
@@ -547,7 +566,7 @@ class PlayhtmlAdapter {
     return url.toString();
   }
 
-  // --- 7. GLOBAL ROOM DISCOVERY BEACON (SẢNH CHỜ TOÀN CỤC & ĐA MÁY) ---
+  // --- 7. GLOBAL ROOM DISCOVERY BEACON (SẢNH CHỜ TOÀN CỤC QUA PLAYHTML & SERVERLESS) ---
   _publishRoomBeacon() {
     if (!this.roomState || !this.roomId) return;
     try {
@@ -571,20 +590,30 @@ class PlayhtmlAdapter {
         heartbeat: now
       };
 
-      // 1. Lưu vào LocalStorage (Cùng trình duyệt/đa tab)
+      // 1. Cập nhật vào Bộ nhớ đệm Toàn cầu Cloud
+      GLOBAL_CLOUD_ROOMS.set(this.roomId, summary);
+
+      // 2. Lưu vào LocalStorage (Cùng trình duyệt/đa tab)
       const registryRaw = localStorage.getItem('ottv2_global_rooms');
       const registry = registryRaw ? JSON.parse(registryRaw) : {};
       registry[this.roomId] = summary;
       localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
 
-      // 2. Broadcast qua Channel discovery (Cùng máy)
+      // 3. Broadcast qua Channel discovery (Cùng máy)
       if (typeof BroadcastChannel !== 'undefined') {
-        const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
-        discChannel.postMessage({ type: 'ROOM_ANNOUNCE', room: summary });
-        discChannel.close();
+        try {
+          const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
+          discChannel.postMessage({ type: 'ROOM_ANNOUNCE', room: summary });
+          discChannel.close();
+        } catch (e) {}
       }
 
-      // 3. Đồng bộ lên Central Server (Cho máy khác / Đa thiết bị qua Internet/LAN)
+      // 4. Bắn sự kiện DOM nội bộ để UI sảnh chờ re-render ngay
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ottv2:rooms_updated', { detail: { type: 'ANNOUNCE', room: summary } }));
+      }
+
+      // 5. Đồng bộ lên Central Server (nếu có server Node.js chạy cùng)
       fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -596,19 +625,27 @@ class PlayhtmlAdapter {
   _unpublishRoomBeacon() {
     if (!this.roomId) return;
     try {
+      GLOBAL_CLOUD_ROOMS.delete(this.roomId);
+
       const registryRaw = localStorage.getItem('ottv2_global_rooms');
       if (registryRaw) {
         const registry = JSON.parse(registryRaw);
         delete registry[this.roomId];
         localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
       }
+
       if (typeof BroadcastChannel !== 'undefined') {
-        const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
-        discChannel.postMessage({ type: 'ROOM_CLOSED', roomId: this.roomId });
-        discChannel.close();
+        try {
+          const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
+          discChannel.postMessage({ type: 'ROOM_CLOSED', roomId: this.roomId });
+          discChannel.close();
+        } catch (e) {}
       }
 
-      // Xoá trên Central Server để máy khác thấy phòng đóng ngay lập tức
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ottv2:rooms_updated', { detail: { type: 'CLOSED', roomId: this.roomId } }));
+      }
+
       fetch(`/api/rooms/${encodeURIComponent(this.roomId)}`, {
         method: 'DELETE'
       }).catch(() => {});
@@ -650,42 +687,71 @@ class PlayhtmlAdapter {
   }
 
   /**
-   * Lấy danh sách phòng Serverless P2P đã phát hiện
+   * Khởi tạo đồng bộ Sảnh chờ toàn cầu qua playhtml Cloud
+   */
+  static initGlobalLobby() {
+    if (typeof window !== 'undefined' && window.playhtml && typeof window.playhtml.init === 'function') {
+      try {
+        window.playhtml.init({ room: 'ottv2-global-lobby-v2' });
+        console.log('🌐 playhtml Global Lobby Cloud Initialized!');
+      } catch (e) {}
+    }
+  }
+
+  /**
+   * Lấy danh sách phòng Serverless P2P & Cloud đã phát hiện
    * @returns {Array<Object>}
    */
   static getDiscoveredRooms() {
     try {
-      const registryRaw = localStorage.getItem('ottv2_global_rooms');
-      if (!registryRaw) return [];
-      const registry = JSON.parse(registryRaw);
       const now = Date.now();
-      const validRooms = [];
-      let hasExpired = false;
+      const combinedMap = new Map();
 
-      for (const [roomId, room] of Object.entries(registry)) {
-        // Phòng có heartbeat trong vòng 45 giây gần nhất được coi là active
+      // 1. Nạp từ bộ nhớ đệm Cloud
+      for (const [id, room] of GLOBAL_CLOUD_ROOMS.entries()) {
         if (now - (room.heartbeat || 0) < 45000) {
-          let elapsedTimeMs = 0;
-          if (room.status === 'PLAYING' && room.gameStartedAt) {
-            elapsedTimeMs = Math.max(0, now - room.gameStartedAt);
-          } else if (room.status === 'FINISHED' && room.gameStartedAt) {
-            elapsedTimeMs = Math.max(0, (room.finishedAt || now) - room.gameStartedAt);
-          }
-          const waitingTimeMs = room.status === 'WAITING' ? Math.max(0, now - (room.createdAt || now)) : 0;
-
-          validRooms.push({
-            ...room,
-            elapsedTimeMs,
-            waitingTimeMs
-          });
+          combinedMap.set(id, room);
         } else {
-          delete registry[roomId];
-          hasExpired = true;
+          GLOBAL_CLOUD_ROOMS.delete(id);
         }
       }
 
-      if (hasExpired) {
-        localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
+      // 2. Nạp từ LocalStorage
+      const registryRaw = localStorage.getItem('ottv2_global_rooms');
+      if (registryRaw) {
+        const registry = JSON.parse(registryRaw);
+        let hasExpired = false;
+
+        for (const [roomId, room] of Object.entries(registry)) {
+          if (now - (room.heartbeat || 0) < 45000) {
+            combinedMap.set(roomId, room);
+          } else {
+            delete registry[roomId];
+            hasExpired = true;
+          }
+        }
+
+        if (hasExpired) {
+          localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
+        }
+      }
+
+      // 3. Tính toán thời gian thực
+      const validRooms = [];
+      for (const room of combinedMap.values()) {
+        let elapsedTimeMs = 0;
+        if (room.status === 'PLAYING' && room.gameStartedAt) {
+          elapsedTimeMs = Math.max(0, now - room.gameStartedAt);
+        } else if (room.status === 'FINISHED' && room.gameStartedAt) {
+          elapsedTimeMs = Math.max(0, (room.finishedAt || now) - room.gameStartedAt);
+        }
+        const waitingTimeMs = room.status === 'WAITING' ? Math.max(0, now - (room.createdAt || now)) : 0;
+
+        validRooms.push({
+          ...room,
+          elapsedTimeMs,
+          waitingTimeMs
+        });
       }
 
       return validRooms.sort((a, b) => {
@@ -714,4 +780,11 @@ class PlayhtmlAdapter {
       });
     }
   }
+}
+
+// Khởi động đồng bộ sảnh chờ ngay khi playhtml module tải xong
+if (typeof window !== 'undefined') {
+  window.addEventListener('playhtml:ready', () => {
+    PlayhtmlAdapter.initGlobalLobby();
+  });
 }

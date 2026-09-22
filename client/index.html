@@ -323,23 +323,38 @@
   <script src="shared/gameRules.js"></script>
 
   <!-- Core Modules -->
-  <script src="js/core/constants.js?v=2.1"></script>
-  <script src="js/core/piece.js?v=2.1"></script>
-  <script src="js/core/board.js?v=2.1"></script>
-  <script src="js/core/rules.js?v=2.1"></script>
+  <script src="js/core/constants.js?v=2.3"></script>
+  <script src="js/core/piece.js?v=2.3"></script>
+  <script src="js/core/board.js?v=2.3"></script>
+  <script src="js/core/rules.js?v=2.3"></script>
 
   <!-- UI & Sound Modules -->
-  <script src="js/ui/soundManager.js?v=2.1"></script>
-  <script src="js/ui/boardRenderer.js?v=2.1"></script>
-  <script src="js/ui/controls.js?v=2.1"></script>
+  <script src="js/ui/soundManager.js?v=2.3"></script>
+  <script src="js/ui/boardRenderer.js?v=2.3"></script>
+  <script src="js/ui/controls.js?v=2.3"></script>
+
+  <!-- playhtml Core (playhtml.fun Serverless Real-Time Cloud) -->
+  <script type="module">
+    try {
+      import { playhtml } from "https://unpkg.com/playhtml@latest";
+      window.playhtml = playhtml;
+      if (typeof window.onPlayhtmlLoaded === 'function') {
+        window.onPlayhtmlLoaded(playhtml);
+      }
+      window.dispatchEvent(new CustomEvent('playhtml:ready', { detail: playhtml }));
+      console.log('✅ playhtml.fun Cloud Real-Time Module Loaded!');
+    } catch (e) {
+      console.warn('⚠️ playhtml module load warning (falling back to P2P adapter):', e);
+    }
+  </script>
 
   <!-- Network Modules (Serverless Real-Time Engine) -->
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/network/playhtmlAdapter.js?v=2.2"></script>
-  <script src="js/network/playfullAdapter.js?v=2.2"></script>
+  <script src="js/network/playhtmlAdapter.js?v=2.3"></script>
+  <script src="js/network/playfullAdapter.js?v=2.3"></script>
 
   <!-- Main Controller -->
-  <script src="js/main.js?v=2.1"></script>
+  <script src="js/main.js?v=2.3"></script>
 
 </body>
 </html>
