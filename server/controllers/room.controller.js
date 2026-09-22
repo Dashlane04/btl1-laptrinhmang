@@ -130,15 +130,59 @@ class RoomController {
   }
 
   /**
-   * Lấy danh sách tóm tắt các phòng công khai
+   * Lấy danh sách tóm tắt các phòng công khai (Kèm thời gian chơi & sắp xếp)
+   * @param {Object} [filter]
    * @returns {Array<Object>}
    */
-  getPublicRoomList() {
+  getPublicRoomList(filter = {}) {
     const list = [];
     for (const room of this.rooms.values()) {
-      list.push(room.toSummaryJSON());
+      const summary = room.toSummaryJSON();
+      if (filter.status && summary.status !== filter.status) {
+        continue;
+      }
+      list.push(summary);
     }
-    return list;
+    // Sắp xếp: Phòng đang chờ lên trước, sau đó là phòng đang chơi mới nhất
+    return list.sort((a, b) => {
+      if (a.status === 'WAITING' && b.status !== 'WAITING') return -1;
+      if (a.status !== 'WAITING' && b.status === 'WAITING') return 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }
+
+  /**
+   * Lấy thống kê tổng quan toàn hệ thống phòng
+   * @returns {Object}
+   */
+  getRoomStats() {
+    let totalRooms = this.rooms.size;
+    let waitingRooms = 0;
+    let playingRooms = 0;
+    let finishedRooms = 0;
+    let totalPlayers = 0;
+    let totalSpectators = 0;
+
+    for (const room of this.rooms.values()) {
+      if (room.status === 'WAITING') waitingRooms++;
+      else if (room.status === 'PLAYING') playingRooms++;
+      else if (room.status === 'FINISHED') finishedRooms++;
+
+      if (room.playerRed) totalPlayers++;
+      if (room.playerBlue) totalPlayers++;
+      totalSpectators += room.spectators.length;
+    }
+
+    return {
+      totalRooms,
+      waitingRooms,
+      playingRooms,
+      finishedRooms,
+      totalPlayers,
+      totalSpectators,
+      totalUsers: totalPlayers + totalSpectators,
+      timestamp: Date.now()
+    };
   }
 
   /**

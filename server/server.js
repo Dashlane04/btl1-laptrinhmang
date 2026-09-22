@@ -20,14 +20,52 @@ const sharedPath = path.join(__dirname, '..', 'shared');
 app.use(express.static(clientPath));
 app.use('/shared', express.static(sharedPath));
 
+const roomController = require('./controllers/room.controller');
+
 // API Trạng thái hệ thống
 app.get('/api/status', (req, res) => {
+  const stats = roomController.getRoomStats();
   res.json({
     status: 'online',
-    engine: 'playhtml (Serverless Cloud & PartyKit CRDT)',
-    version: '2.1.0',
+    engine: 'Dual-Engine: Node.js REST/Socket + playhtml Serverless P2P',
+    version: '2.2.0',
     name: 'OTTv2 Game Server',
+    stats,
     timestamp: Date.now()
+  });
+});
+
+// API Danh sách phòng chơi
+app.get('/api/rooms', (req, res) => {
+  const { status } = req.query;
+  const rooms = roomController.getPublicRoomList({ status });
+  const stats = roomController.getRoomStats();
+  res.json({
+    success: true,
+    count: rooms.length,
+    stats,
+    rooms,
+    timestamp: Date.now()
+  });
+});
+
+// API Thống kê nhanh toàn server
+app.get('/api/rooms/stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: roomController.getRoomStats()
+  });
+});
+
+// API Chi tiết một phòng
+app.get('/api/rooms/:id', (req, res) => {
+  const room = roomController.getRoom(req.params.id);
+  if (!room) {
+    return res.status(404).json({ success: false, message: 'Phòng không tồn tại hoặc đã đóng!' });
+  }
+  res.json({
+    success: true,
+    room: room.toSummaryJSON()
   });
 });
 

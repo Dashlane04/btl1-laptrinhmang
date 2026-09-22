@@ -84,6 +84,81 @@
           </button>
         </div>
       </div>
+
+      <!-- Khung Danh Sách & Giám Sát Phòng Chơi (Live Room Hub) -->
+      <div class="room-section" id="live-room-section">
+        <div class="room-section-header">
+          <div class="room-section-title">
+            <span class="pulse-indicator"></span>
+            <h3>Sảnh Trực Tiếp & Giám Sát Phòng Chơi</h3>
+          </div>
+          <button id="btn-refresh-rooms" class="btn btn-secondary btn-refresh-rooms" title="Tải lại danh sách phòng">
+            <span class="icon-spin">🔄</span> Làm mới
+          </button>
+        </div>
+
+        <!-- 1. Thanh Thống Kê Tổng Quan (Dashboard Stats Bar) -->
+        <div class="lobby-stats-bar">
+          <div class="stat-card">
+            <div class="stat-icon">🏠</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-rooms">0</span>
+              <span class="stat-label">Tổng số phòng</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-waiting-rooms" style="color: #34d399;">0</span>
+              <span class="stat-label">Đang chờ đối thủ</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚔️</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-playing-rooms" style="color: #f87171;">0</span>
+              <span class="stat-label">Đang thi đấu</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-users" style="color: #93c5fd;">0</span>
+              <span class="stat-label">Người chơi online</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Thanh Công Cụ Bộ Lọc & Tìm Kiếm (Toolbar) -->
+        <div class="room-toolbar">
+          <div class="room-filter-tabs" id="room-filter-tabs">
+            <button class="filter-tab active" data-filter="ALL">
+              Tất Cả <span class="badge-count" id="count-filter-all">0</span>
+            </button>
+            <button class="filter-tab" data-filter="WAITING">
+              🟢 Đang Chờ (1/2) <span class="badge-count" id="count-filter-waiting">0</span>
+            </button>
+            <button class="filter-tab" data-filter="PLAYING">
+              🔴 Đang Thi Đấu (2/2) <span class="badge-count" id="count-filter-playing">0</span>
+            </button>
+            <button class="filter-tab" data-filter="SPECTATE">
+              👁️ Có Thể Xem <span class="badge-count" id="count-filter-spectate">0</span>
+            </button>
+          </div>
+
+          <div class="room-search-wrapper">
+            <div class="room-search-box">
+              <span class="room-search-icon">🔍</span>
+              <input type="text" id="input-search-rooms" class="form-control" placeholder="Tìm tên hoặc mã phòng...">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Lưới Danh Sách Thẻ Phòng (Room Grid Container) -->
+        <div class="room-list-grid" id="room-list-grid">
+          <!-- Render động qua JavaScript -->
+        </div>
+      </div>
     </section>
 
     <!-- B. ĐẤU TRƯỜNG BÀN CỜ (GAME ARENA VIEW) -->

@@ -23,37 +23,93 @@ Tài liệu này định nghĩa chi tiết toàn bộ các sự kiện Socket.io
 
 ## 2. REST API Endpoints
 
-### 2.1. Lấy thông tin trạng thái Server
+### 2.1. Lấy thông tin trạng thái Server & Thống kê phòng
 * **Endpoint**: `GET /api/status`
 * **Response**:
 ```json
 {
   "status": "online",
-  "version": "1.0.0",
-  "activeRooms": 3,
-  "activePlayers": 6,
+  "engine": "Dual-Engine: Node.js REST/Socket + playhtml Serverless P2P",
+  "version": "2.2.0",
+  "name": "OTTv2 Game Server",
+  "stats": {
+    "totalRooms": 5,
+    "waitingRooms": 2,
+    "playingRooms": 3,
+    "finishedRooms": 0,
+    "totalPlayers": 8,
+    "totalSpectators": 4,
+    "totalUsers": 12,
+    "timestamp": 1726880000000
+  },
   "timestamp": 1726880000000
 }
 ```
 
-### 2.2. Lấy danh sách phòng chơi công khai
+### 2.2. Lấy danh sách phòng chơi công khai & Thời gian thi đấu
 * **Endpoint**: `GET /api/rooms`
+* **Query Params**: `?status=WAITING` hoặc `?status=PLAYING` (tuỳ chọn)
 * **Response**:
 ```json
-[
-  {
-    "id": "room-abc123",
-    "name": "Đại Chiến OTT",
-    "hasPassword": false,
-    "status": "WAITING",
-    "playerCount": 1,
-    "maxPlayers": 2,
-    "playerRed": "Player1",
-    "playerBlue": null,
-    "timePerTurn": 30
-  }
-]
+{
+  "success": true,
+  "count": 2,
+  "stats": {
+    "totalRooms": 2,
+    "waitingRooms": 1,
+    "playingRooms": 1,
+    "totalPlayers": 3,
+    "totalSpectators": 1,
+    "totalUsers": 4
+  },
+  "rooms": [
+    {
+      "id": "ott-a1b2c3",
+      "name": "Đại Chiến OTT Cúp 1",
+      "hasPassword": false,
+      "status": "WAITING",
+      "playerCount": 1,
+      "maxPlayers": 2,
+      "spectatorCount": 0,
+      "playerRed": { "name": "NamPro", "score": 0 },
+      "playerBlue": null,
+      "timePerTurn": 30,
+      "currentTurn": null,
+      "createdAt": 1726880000000,
+      "gameStartedAt": null,
+      "finishedAt": null,
+      "elapsedTimeMs": 0,
+      "waitingTimeMs": 45000,
+      "moveCount": 0,
+      "scores": { "red": 0, "blue": 0 }
+    },
+    {
+      "id": "ott-x7y8z9",
+      "name": "Chung Kết OTTv2",
+      "hasPassword": false,
+      "status": "PLAYING",
+      "playerCount": 2,
+      "maxPlayers": 2,
+      "spectatorCount": 3,
+      "playerRed": { "name": "Player1", "score": 1 },
+      "playerBlue": { "name": "Player2", "score": 0 },
+      "timePerTurn": 30,
+      "currentTurn": "RED",
+      "createdAt": 1726879800000,
+      "gameStartedAt": 1726879900000,
+      "finishedAt": null,
+      "elapsedTimeMs": 245000,
+      "waitingTimeMs": 0,
+      "moveCount": 14,
+      "scores": { "red": 1, "blue": 0 }
+    }
+  ],
+  "timestamp": 1726880145000
+}
 ```
+
+### 2.3. Lấy thống kê nhanh toàn hệ thống
+* **Endpoint**: `GET /api/rooms/stats`
 
 ---
 

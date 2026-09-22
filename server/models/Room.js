@@ -30,7 +30,10 @@ class Room {
 
     this.moveHistory = [];
     this.rematchVotes = new Set();
+    this.scores = { red: 0, blue: 0 };
     this.createdAt = Date.now();
+    this.gameStartedAt = null;
+    this.finishedAt = null;
     this.lastActivityAt = Date.now();
   }
 
@@ -87,6 +90,7 @@ class Room {
 
     if (wasPlayer && this.status === 'PLAYING') {
       this.status = 'FINISHED';
+      this.finishedAt = Date.now();
       this.stopTimer();
     }
 
@@ -111,6 +115,8 @@ class Room {
    */
   startGame(onTickCallback, onTimeoutCallback) {
     this.status = 'PLAYING';
+    this.gameStartedAt = Date.now();
+    this.finishedAt = null;
     this.board.reset();
     this.currentTurn = SIDES.RED;
     this.moveHistory = [];
@@ -185,20 +191,41 @@ class Room {
   }
 
   /**
-   * Dữ liệu tóm tắt phòng cho danh sách công khai
+   * Dữ liệu tóm tắt phòng cho danh sách công khai (Kèm thời gian chơi và trạng thái chi tiết)
    */
   toSummaryJSON() {
+    const now = Date.now();
+    const playerCount = (this.playerRed ? 1 : 0) + (this.playerBlue ? 1 : 0);
+
+    let elapsedTimeMs = 0;
+    if (this.status === 'PLAYING' && this.gameStartedAt) {
+      elapsedTimeMs = Math.max(0, now - this.gameStartedAt);
+    } else if (this.status === 'FINISHED' && this.gameStartedAt) {
+      elapsedTimeMs = Math.max(0, (this.finishedAt || now) - this.gameStartedAt);
+    }
+
+    const waitingTimeMs = this.status === 'WAITING' ? Math.max(0, now - this.createdAt) : 0;
+
     return {
       id: this.id,
       name: this.name,
       hasPassword: Boolean(this.password && this.password.length > 0),
-      status: this.status,
-      playerCount: (this.playerRed ? 1 : 0) + (this.playerBlue ? 1 : 0),
+      status: this.status, // 'WAITING' | 'PLAYING' | 'FINISHED'
+      playerCount,
       maxPlayers: 2,
       spectatorCount: this.spectators.length,
-      playerRed: this.playerRed ? this.playerRed.name : null,
-      playerBlue: this.playerBlue ? this.playerBlue.name : null,
-      timePerTurn: this.timePerTurn
+      playerRed: this.playerRed ? { name: this.playerRed.name, score: this.playerRed.score || 0 } : null,
+      playerBlue: this.playerBlue ? { name: this.playerBlue.name, score: this.playerBlue.score || 0 } : null,
+      timePerTurn: this.timePerTurn,
+      currentTurn: this.status === 'PLAYING' ? this.currentTurn : null,
+      turnTimeRemaining: this.status === 'PLAYING' ? this.turnTimeRemaining : null,
+      createdAt: this.createdAt,
+      gameStartedAt: this.gameStartedAt,
+      finishedAt: this.finishedAt,
+      elapsedTimeMs,
+      waitingTimeMs,
+      moveCount: this.moveHistory.length,
+      scores: this.scores
     };
   }
 
@@ -206,10 +233,9 @@ class Room {
    * Dữ liệu chi tiết gửi cho người tham gia phòng
    */
   toDetailJSON() {
+    const summary = this.toSummaryJSON();
     return {
-      id: this.id,
-      name: this.name,
-      status: this.status,
+      ...summary,
       playerRed: this.playerRed,
       playerBlue: this.playerBlue,
       spectators: this.spectators,

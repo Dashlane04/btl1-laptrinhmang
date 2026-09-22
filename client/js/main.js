@@ -469,7 +469,347 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 10. GÁN SỰ KIỆN CHO CÁC NÚT BẤM VÀ FORM
+  // 10. GIAO DIỆN SẢNH CHỜ TRỰC TIẾP & GIÁM SÁT PHÒNG (LIVE ROOM HUB)
+  let activeRoomFilter = 'ALL';
+  let roomSearchKeyword = '';
+  let cachedLobbyRooms = [];
+  let roomLiveTickerInterval = null;
+  let roomRefreshPollInterval = null;
+
+  function formatDuration(ms) {
+    if (!ms || ms < 0) return '00:00';
+    const totalSec = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    if (hours > 0) {
+      const hh = String(hours).padStart(2, '0');
+      return `${hh}:${mm}:${ss}`;
+    }
+    return `${mm}:${ss}`;
+  }
+
+  async function fetchAndRenderLobbyRooms() {
+    let serverlessRooms = PlayhtmlAdapter.getDiscoveredRooms() || [];
+    let serverRooms = [];
+
+    try {
+      const res = await fetch('/api/rooms', { cache: 'no-cache' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.rooms) {
+          serverRooms = data.rooms;
+        }
+      }
+    } catch (e) {
+      // Chế độ static offline
+    }
+
+    const roomMap = new Map();
+    serverlessRooms.forEach(r => roomMap.set(r.id, r));
+    serverRooms.forEach(r => roomMap.set(r.id, r));
+
+    cachedLobbyRooms = Array.from(roomMap.values()).sort((a, b) => {
+      if (a.status === 'WAITING' && b.status !== 'WAITING') return -1;
+      if (a.status !== 'WAITING' && b.status === 'WAITING') return 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+
+    updateLobbyStatsBar(cachedLobbyRooms);
+    renderLobbyRoomGrid();
+  }
+
+  function updateLobbyStatsBar(rooms) {
+    const totalRooms = rooms.length;
+    let waitingRooms = 0;
+    let playingRooms = 0;
+    let totalUsers = 0;
+
+    rooms.forEach(r => {
+      if (r.status === 'WAITING') waitingRooms++;
+      else if (r.status === 'PLAYING') playingRooms++;
+      totalUsers += (r.playerCount || 0) + (r.spectatorCount || 0);
+    });
+
+    const elTotal = document.getElementById('stat-total-rooms');
+    const elWaiting = document.getElementById('stat-waiting-rooms');
+    const elPlaying = document.getElementById('stat-playing-rooms');
+    const elUsers = document.getElementById('stat-total-users');
+
+    if (elTotal) elTotal.textContent = totalRooms;
+    if (elWaiting) elWaiting.textContent = waitingRooms;
+    if (elPlaying) elPlaying.textContent = playingRooms;
+    if (elUsers) elUsers.textContent = totalUsers;
+
+    const countAll = document.getElementById('count-filter-all');
+    const countWait = document.getElementById('count-filter-waiting');
+    const countPlay = document.getElementById('count-filter-playing');
+    const countSpec = document.getElementById('count-filter-spectate');
+
+    if (countAll) countAll.textContent = totalRooms;
+    if (countWait) countWait.textContent = waitingRooms;
+    if (countPlay) countPlay.textContent = playingRooms;
+    if (countSpec) countSpec.textContent = playingRooms;
+  }
+
+  function renderLobbyRoomGrid() {
+    const grid = document.getElementById('room-list-grid');
+    if (!grid) return;
+
+    // Áp dụng bộ lọc
+    const filtered = cachedLobbyRooms.filter(r => {
+      // 1. Lọc theo tab
+      if (activeRoomFilter === 'WAITING' && r.status !== 'WAITING') return false;
+      if (activeRoomFilter === 'PLAYING' && r.status !== 'PLAYING') return false;
+      if (activeRoomFilter === 'SPECTATE' && r.status !== 'PLAYING' && r.status !== 'FINISHED') return false;
+
+      // 2. Lọc theo từ khoá tìm kiếm
+      if (roomSearchKeyword) {
+        const kw = roomSearchKeyword.toLowerCase();
+        const matchName = (r.name || '').toLowerCase().includes(kw);
+        const matchId = (r.id || '').toLowerCase().includes(kw);
+        const matchRed = (r.playerRed?.name || '').toLowerCase().includes(kw);
+        const matchBlue = (r.playerBlue?.name || '').toLowerCase().includes(kw);
+        if (!matchName && !matchId && !matchRed && !matchBlue) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      let emptyMsg = 'Chưa có phòng nào đang mở trên hệ thống.';
+      if (activeRoomFilter === 'WAITING') emptyMsg = 'Hiện không có phòng nào đang chờ người.';
+      if (activeRoomFilter === 'PLAYING') emptyMsg = 'Hiện chưa có trận đấu nào đang diễn ra.';
+      if (roomSearchKeyword) emptyMsg = `Không tìm thấy phòng nào phù hợp với "${roomSearchKeyword}".`;
+
+      grid.innerHTML = `
+        <div class="room-empty-state">
+          <div class="room-empty-icon">🎲</div>
+          <h4>${emptyMsg}</h4>
+          <p>Hãy bấm "Tạo Phòng Mới" để mở phòng và mời bạn bè vào tranh tài!</p>
+          <button class="btn btn-success" id="btn-empty-create-room" style="padding: 9px 20px; font-weight: 700;">
+            ➕ Tạo Phòng Mới Ngay
+          </button>
+        </div>
+      `;
+
+      document.getElementById('btn-empty-create-room')?.addEventListener('click', () => {
+        createRoomModal.classList.add('active');
+      });
+      return;
+    }
+
+    const now = Date.now();
+    grid.innerHTML = filtered.map(r => {
+      const isWaiting = r.status === 'WAITING';
+      const isPlaying = r.status === 'PLAYING';
+      const isFinished = r.status === 'FINISHED';
+
+      // Badge trạng thái
+      let statusBadgeHtml = '';
+      if (isWaiting) {
+        statusBadgeHtml = `<span class="room-status-badge waiting">🟢 Đang Chờ (1/2)</span>`;
+      } else if (isPlaying) {
+        statusBadgeHtml = `<span class="room-status-badge playing">🔴 Đang Thi Đấu (2/2)</span>`;
+      } else {
+        statusBadgeHtml = `<span class="room-status-badge finished">🏁 Kết Thúc</span>`;
+      }
+
+      // Tên người chơi & Điểm số
+      const redName = r.playerRed?.name || 'Chủ phòng (Đỏ)';
+      const redScore = r.scores?.red || r.playerRed?.score || 0;
+      const blueName = r.playerBlue?.name || (isWaiting ? 'Đang đợi đối thủ...' : 'Khách (Xanh)');
+      const blueScore = r.scores?.blue || r.playerBlue?.score || 0;
+
+      // Tính thời gian ban đầu
+      let initialTimerText = '';
+      let chipClass = 'live-timer-chip';
+      if (isWaiting) {
+        const waitMs = Math.max(0, now - (r.createdAt || now));
+        initialTimerText = `⏳ Chờ: ${formatDuration(waitMs)}`;
+        chipClass += ' waiting';
+      } else if (isPlaying) {
+        const playMs = Math.max(0, now - (r.gameStartedAt || now));
+        initialTimerText = `⚔️ Đang đấu: ${formatDuration(playMs)}`;
+      } else {
+        const totalMs = Math.max(0, (r.finishedAt || now) - (r.gameStartedAt || now));
+        initialTimerText = `🏁 Tổng: ${formatDuration(totalMs)}`;
+      }
+
+      // Nút hành động
+      let actionBtnHtml = '';
+      if (isWaiting) {
+        actionBtnHtml = `<button class="btn btn-success btn-action" data-action="join" data-room-id="${r.id}">⚔️ Tham Chiến Ngay</button>`;
+      } else if (isPlaying) {
+        actionBtnHtml = `<button class="btn btn-primary btn-action" data-action="spectate" data-room-id="${r.id}">👁️ Xem Trực Tiếp</button>`;
+      } else {
+        actionBtnHtml = `<button class="btn btn-secondary btn-action" data-action="spectate" data-room-id="${r.id}">👁️ Xem Bàn Cờ</button>`;
+      }
+
+      return `
+        <div class="room-card status-${r.status.toLowerCase()}" data-room-id="${r.id}">
+          <div class="room-card-header">
+            <div class="room-title-area">
+              <div class="room-name" title="${r.name || ('Phòng #' + r.id)}">${r.name || ('Phòng #' + r.id)}</div>
+              <div class="room-id-tag">
+                <span>Mã: <code>${r.id}</code></span>
+              </div>
+            </div>
+            ${statusBadgeHtml}
+          </div>
+
+          <div class="room-card-body">
+            <div class="room-matchup-row">
+              <div class="room-player-side">
+                <span class="side-dot">🔴</span>
+                <span class="p-name" title="${redName}">${redName}</span>
+                ${isPlaying || isFinished ? `<span style="font-weight: 800; color: #f87171; font-size: 0.8rem;">(${redScore})</span>` : ''}
+              </div>
+
+              <div class="room-vs-badge">VS</div>
+
+              <div class="room-player-side" style="justify-content: flex-end;">
+                ${isPlaying || isFinished ? `<span style="font-weight: 800; color: #60a5fa; font-size: 0.8rem;">(${blueScore})</span>` : ''}
+                <span class="p-name ${isWaiting ? 'waiting' : ''}" title="${blueName}">${blueName}</span>
+                <span class="side-dot">🔵</span>
+              </div>
+            </div>
+
+            <div class="room-timing-row">
+              <div class="${chipClass}">
+                <span class="live-timer-text" data-timer-target="${r.id}">${initialTimerText}</span>
+              </div>
+              <div class="room-meta-tags">
+                <span>⌛ ${r.timePerTurn || 30}s/lượt</span>
+                <span>👁️ ${r.spectatorCount || 0}</span>
+                <span>🎯 ${r.moveCount || 0} nước</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="room-card-actions">
+            ${actionBtnHtml}
+            <button class="btn btn-secondary btn-copy-mini" data-action="copy" data-room-id="${r.id}" title="Sao chép link mời phòng">
+              📋
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Gán sự kiện cho các nút hành động trong thẻ phòng
+    grid.querySelectorAll('[data-action="join"], [data-action="spectate"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const roomId = btn.getAttribute('data-room-id');
+        if (roomId) {
+          startPlayhtmlRoom(roomId, false);
+        }
+      });
+    });
+
+    grid.querySelectorAll('[data-action="copy"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const roomId = btn.getAttribute('data-room-id');
+        if (roomId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('room', roomId);
+          const shareUrl = url.toString();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+              showToast(`📋 Đã sao chép link phòng #${roomId}!`, 'success');
+            }).catch(() => {
+              prompt('Sao chép đường link phòng:', shareUrl);
+            });
+          } else {
+            prompt('Sao chép đường link phòng:', shareUrl);
+          }
+        }
+      });
+    });
+  }
+
+  // Bộ đếm Live Ticker chạy mỗi giây cập nhật thời gian thực trên các thẻ phòng
+  function startLobbyLiveTicker() {
+    if (roomLiveTickerInterval) clearInterval(roomLiveTickerInterval);
+    roomLiveTickerInterval = setInterval(() => {
+      if (!lobbyView.classList.contains('active')) return;
+      const now = Date.now();
+
+      document.querySelectorAll('[data-timer-target]').forEach(el => {
+        const roomId = el.getAttribute('data-timer-target');
+        const room = cachedLobbyRooms.find(r => r.id === roomId);
+        if (!room) return;
+
+        if (room.status === 'WAITING') {
+          const waitMs = Math.max(0, now - (room.createdAt || now));
+          el.textContent = `⏳ Chờ: ${formatDuration(waitMs)}`;
+        } else if (room.status === 'PLAYING') {
+          const playMs = Math.max(0, now - (room.gameStartedAt || now));
+          el.textContent = `⚔️ Đang đấu: ${formatDuration(playMs)}`;
+        } else if (room.status === 'FINISHED') {
+          const totalMs = Math.max(0, (room.finishedAt || now) - (room.gameStartedAt || now));
+          el.textContent = `🏁 Tổng: ${formatDuration(totalMs)}`;
+        }
+      });
+    }, 1000);
+  }
+
+  // Khởi động đồng bộ danh sách phòng và lắng nghe Discovery
+  function initLobbyRoomDiscovery() {
+    fetchAndRenderLobbyRooms();
+    startLobbyLiveTicker();
+
+    // Polling định kỳ mỗi 5s
+    if (roomRefreshPollInterval) clearInterval(roomRefreshPollInterval);
+    roomRefreshPollInterval = setInterval(() => {
+      if (lobbyView.classList.contains('active')) {
+        fetchAndRenderLobbyRooms();
+      }
+    }, 5000);
+
+    // Lắng nghe BroadcastChannel Discovery
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const lobbyChannel = new BroadcastChannel('ottv2_lobby_discovery');
+        lobbyChannel.onmessage = (event) => {
+          if (event.data && (event.data.type === 'ROOM_ANNOUNCE' || event.data.type === 'ROOM_CLOSED')) {
+            fetchAndRenderLobbyRooms();
+          }
+        };
+      } catch (e) {}
+    }
+
+    // Sự kiện Filter Tabs
+    document.querySelectorAll('#room-filter-tabs .filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('#room-filter-tabs .filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeRoomFilter = tab.getAttribute('data-filter') || 'ALL';
+        renderLobbyRoomGrid();
+      });
+    });
+
+    // Sự kiện Tìm kiếm
+    const searchInput = document.getElementById('input-search-rooms');
+    searchInput?.addEventListener('input', (e) => {
+      roomSearchKeyword = e.target.value.trim();
+      renderLobbyRoomGrid();
+    });
+
+    // Sự kiện Nút Refresh
+    const btnRefresh = document.getElementById('btn-refresh-rooms');
+    btnRefresh?.addEventListener('click', async () => {
+      btnRefresh.classList.add('spinning');
+      await fetchAndRenderLobbyRooms();
+      showToast('Đã làm mới danh sách phòng chơi!', 'info');
+      setTimeout(() => {
+        btnRefresh.classList.remove('spinning');
+      }, 600);
+    });
+  }
+
+  // 11. GÁN SỰ KIỆN CHO CÁC NÚT BẤM VÀ FORM
 
   // Chế độ Offline Pass & Play
   document.getElementById('btn-mode-offline')?.addEventListener('click', startOffline2P);
@@ -559,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       stopLocalTimer();
       showView('lobby');
+      fetchAndRenderLobbyRooms();
     }
   });
 
@@ -577,6 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-close-game-over')?.addEventListener('click', () => {
     gameOverModal.classList.remove('active');
     showView('lobby');
+    fetchAndRenderLobbyRooms();
   });
 
   // Bật/tắt âm thanh
@@ -616,7 +958,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendChatMessage();
   });
 
-  // 11. TỰ ĐỘNG THAM GIA PHÒNG NẾU URL CHỨA ?room=
+  // 12. KHỞI TẠO DISCOVERY SẢNH CHỜ
+  initLobbyRoomDiscovery();
+
+  // 13. TỰ ĐỘNG THAM GIA PHÒNG NẾU URL CHỨA ?room=
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
   if (roomParam) {

@@ -72,6 +72,9 @@ class PlayhtmlAdapter {
       board: options.initialBoard || [],
       currentTurn: 'RED',
       turnStartTime: Date.now(),
+      createdAt: Date.now(),
+      gameStartedAt: null,
+      finishedAt: null,
       lastMove: null,
       moveHistory: [],
       scores: { red: 0, blue: 0 },
@@ -81,6 +84,8 @@ class PlayhtmlAdapter {
     };
 
     this._saveLocalState();
+    this._publishRoomBeacon();
+    this._startHeartbeat();
     this._trigger('room:ready', {
       roomId: this.roomId,
       role: this.role,
@@ -246,6 +251,7 @@ class PlayhtmlAdapter {
           this.roomState.guestId = packet.clientId;
           this.roomState.guestName = packet.playerName;
           this.roomState.status = 'PLAYING';
+          this.roomState.gameStartedAt = this.roomState.gameStartedAt || Date.now();
           this.roomState.turnStartTime = Date.now();
         } else {
           if (!this.roomState.spectators.some(s => s.id === packet.clientId)) {
@@ -316,7 +322,10 @@ class PlayhtmlAdapter {
       try { this.broadcastChannel.postMessage(packet); } catch (e) {}
     }
 
-    // 3. Kích hoạt sự kiện nội bộ
+    // 3. Cập nhật Discovery Beacon cho sảnh chờ
+    this._publishRoomBeacon();
+
+    // 4. Kích hoạt sự kiện nội bộ
     this._trigger('state:updated', {
       roomState: this.roomState,
       mySide: this.mySide,
@@ -472,6 +481,11 @@ class PlayhtmlAdapter {
       this.notifyGameOver(winner, `Phe ${this.mySide === 'RED' ? 'Đỏ' : 'Xanh'} đã thoát phòng!`);
     }
 
+    this._stopHeartbeat();
+    if (this.role === 'HOST') {
+      this._unpublishRoomBeacon();
+    }
+
     if (this.peer) {
       try { this.peer.destroy(); } catch (e) {}
       this.peer = null;
@@ -503,6 +517,7 @@ class PlayhtmlAdapter {
               this.roomState.guestId = event.data.clientId;
               this.roomState.guestName = event.data.playerName;
               this.roomState.status = 'PLAYING';
+              this.roomState.gameStartedAt = this.roomState.gameStartedAt || Date.now();
               this.roomState.turnStartTime = Date.now();
             }
             this.syncState(this.roomState);
@@ -530,6 +545,127 @@ class PlayhtmlAdapter {
     const url = new URL(window.location.href);
     url.searchParams.set('room', this.roomId);
     return url.toString();
+  }
+
+  // --- 7. GLOBAL ROOM DISCOVERY BEACON (SẢNH CHỜ TOÀN CỤC) ---
+  _publishRoomBeacon() {
+    if (!this.roomState || !this.roomId) return;
+    try {
+      const now = Date.now();
+      const summary = {
+        id: this.roomId,
+        name: this.roomState.roomName || `Phòng #${this.roomId.slice(-4).toUpperCase()}`,
+        status: this.roomState.status || 'WAITING',
+        playerCount: (this.roomState.hostId ? 1 : 0) + (this.roomState.guestId ? 1 : 0),
+        maxPlayers: 2,
+        spectatorCount: (this.roomState.spectators || []).length,
+        playerRed: this.roomState.hostName ? { name: this.roomState.hostName, score: this.roomState.scores?.red || 0 } : null,
+        playerBlue: this.roomState.guestName ? { name: this.roomState.guestName, score: this.roomState.scores?.blue || 0 } : null,
+        timePerTurn: this.roomState.timePerTurn || 30,
+        currentTurn: this.roomState.currentTurn || 'RED',
+        createdAt: this.roomState.createdAt || now,
+        gameStartedAt: this.roomState.gameStartedAt || null,
+        finishedAt: this.roomState.finishedAt || null,
+        moveCount: (this.roomState.moveHistory || []).length,
+        scores: this.roomState.scores || { red: 0, blue: 0 },
+        heartbeat: now
+      };
+
+      // 1. Lưu vào LocalStorage
+      const registryRaw = localStorage.getItem('ottv2_global_rooms');
+      const registry = registryRaw ? JSON.parse(registryRaw) : {};
+      registry[this.roomId] = summary;
+      localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
+
+      // 2. Broadcast qua Channel discovery
+      if (typeof BroadcastChannel !== 'undefined') {
+        const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
+        discChannel.postMessage({ type: 'ROOM_ANNOUNCE', room: summary });
+        discChannel.close();
+      }
+    } catch (e) {}
+  }
+
+  _unpublishRoomBeacon() {
+    if (!this.roomId) return;
+    try {
+      const registryRaw = localStorage.getItem('ottv2_global_rooms');
+      if (registryRaw) {
+        const registry = JSON.parse(registryRaw);
+        delete registry[this.roomId];
+        localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
+      }
+      if (typeof BroadcastChannel !== 'undefined') {
+        const discChannel = new BroadcastChannel('ottv2_lobby_discovery');
+        discChannel.postMessage({ type: 'ROOM_CLOSED', roomId: this.roomId });
+        discChannel.close();
+      }
+    } catch (e) {}
+  }
+
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.role === 'HOST' && this.roomState) {
+        this._publishRoomBeacon();
+      }
+    }, 4000);
+  }
+
+  _stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  /**
+   * Lấy danh sách phòng Serverless P2P đã phát hiện
+   * @returns {Array<Object>}
+   */
+  static getDiscoveredRooms() {
+    try {
+      const registryRaw = localStorage.getItem('ottv2_global_rooms');
+      if (!registryRaw) return [];
+      const registry = JSON.parse(registryRaw);
+      const now = Date.now();
+      const validRooms = [];
+      let hasExpired = false;
+
+      for (const [roomId, room] of Object.entries(registry)) {
+        // Phòng có heartbeat trong vòng 45 giây gần nhất được coi là active
+        if (now - (room.heartbeat || 0) < 45000) {
+          let elapsedTimeMs = 0;
+          if (room.status === 'PLAYING' && room.gameStartedAt) {
+            elapsedTimeMs = Math.max(0, now - room.gameStartedAt);
+          } else if (room.status === 'FINISHED' && room.gameStartedAt) {
+            elapsedTimeMs = Math.max(0, (room.finishedAt || now) - room.gameStartedAt);
+          }
+          const waitingTimeMs = room.status === 'WAITING' ? Math.max(0, now - (room.createdAt || now)) : 0;
+
+          validRooms.push({
+            ...room,
+            elapsedTimeMs,
+            waitingTimeMs
+          });
+        } else {
+          delete registry[roomId];
+          hasExpired = true;
+        }
+      }
+
+      if (hasExpired) {
+        localStorage.setItem('ottv2_global_rooms', JSON.stringify(registry));
+      }
+
+      return validRooms.sort((a, b) => {
+        if (a.status === 'WAITING' && b.status !== 'WAITING') return -1;
+        if (a.status !== 'WAITING' && b.status === 'WAITING') return 1;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+    } catch (e) {
+      return [];
+    }
   }
 
   // --- EVENT EMITTER ---
