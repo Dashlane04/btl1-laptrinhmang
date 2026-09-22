@@ -614,10 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-open-create-modal')?.addEventListener('click', () => {
-    if (!socketClient.isConnected) {
-      showToast('Không có kết nối tới máy chủ Node.js. Hãy dùng nút "Tạo Phòng Serverless" trên sảnh!', 'error');
-      return;
-    }
     createRoomModal.classList.add('active');
   });
 
@@ -632,7 +628,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const timePerTurn = parseInt(document.getElementById('select-time-turn').value, 10) || 30;
     const playerName = userNicknameInput.value.trim() || 'Chủ phòng';
 
-    socketClient.createRoom(roomName, playerName, password, timePerTurn);
+    if (socketClient.isConnected) {
+      socketClient.createRoom(roomName, playerName, password, timePerTurn);
+    } else {
+      createRoomModal.classList.remove('active');
+      const cleanId = roomName.toLowerCase().replace(/[^a-z0-9]/g, '-') || ('ott-' + Math.random().toString(36).substring(2, 8));
+      startPlayhtmlRoom(cleanId, true);
+    }
   });
 
   document.getElementById('btn-surrender')?.addEventListener('click', () => {
