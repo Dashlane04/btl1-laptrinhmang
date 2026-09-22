@@ -1,0 +1,33 @@
+{
+  "name": "otttv2-multiplayer",
+  "version": "1.0.0",
+  "description": "Trò chơi cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer Real-time trên nền Web (Không cần Database)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "node server/server.js",
+    "dev": "node server/server.js",
+    "client": "npx serve client -p 5000",
+    "test": "node -e \"console.log('Running tests...'); const r = require('./shared/gameRules'); console.log('Rules loaded successfully. Board size:', r.BOARD_SIZE); process.exit(0);\""
+  },
+  "keywords": [
+    "rock-paper-scissors",
+    "oan-tu-ti",
+    "ottv2",
+    "chess",
+    "socket.io",
+    "express",
+    "realtime",
+    "multiplayer",
+    "in-memory",
+    "btl-web"
+  ],
+  "author": "BTL Web Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
