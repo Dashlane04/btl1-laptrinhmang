@@ -1,142 +1,156 @@
 # 🎮 OTTv2 Multiplayer - Cờ Oẳn Tù Tì 9x9 Thời Gian Thực
 
-> **Bài tập lớn Môn Lập trình Web**  
-> Ứng dụng Web Game chiến thuật đối kháng thời gian thực **OTTv2 (Oẳn Tù Tì v2)** trên bàn cờ $9 \times 9$.  
-> ⚡ **Không cần Database** (Lưu trữ RAM In-Memory tốc độ cao)  
-> 🌐 **Chơi đa nền tảng**: Hỗ trợ chơi Offline / Single Player vs Bot trên **GitHub Pages** & Chơi Online Multiplayer thời gian thực qua **Node.js & Socket.io**.
+<div align="center">
+
+[![Live Demo](https://img.shields.io/badge/🌐_Trải_Nghiệm_Trực_Tuyến-GitHub_Pages-22c55e?style=for-the-badge&logo=githubpages&logoColor=white)](https://thing-or-think.github.io/BT1-WEB/)
+[![Real-Time](https://img.shields.io/badge/⚡_Real--Time-playhtml.fun_PartyKit-38bdf8?style=for-the-badge&logo=cloudflare&logoColor=white)](https://playhtml.fun)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x+-68a063?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-MIT-amber?style=for-the-badge)](LICENSE)
+
+### 🔗 **Trải Nghiệm Game Trực Tiếp Tại**:  
+👉 **[https://thing-or-think.github.io/BT1-WEB/](https://thing-or-think.github.io/BT1-WEB/)** 👈
+
+</div>
+
+---
+
+## 📌 Giới Thiệu Dự Án
+
+**OTTv2 Multiplayer** là sản phẩm Bài tập lớn môn **Lập trình Web (Web Application Development)**. Trò chơi kết hợp giữa trò chơi dân gian **Oẳn Tù Tì (Kéo - Búa - Bao)** truyền thống với lối đánh chiến thuật theo lượt trên bàn cờ $9 \times 9$, hỗ trợ đối kháng thời gian thực đa người chơi trên nền tảng Web.
+
+* 🌐 **Chơi Trực Tuyến Không Cần Cài Đặt**: Chạy trực tiếp trên trình duyệt qua **[GitHub Pages](https://thing-or-think.github.io/BT1-WEB/)**.
+* ⚡ **Công Nghệ Serverless Real-Time**: Đồng bộ phòng chơi toàn cầu qua **`playhtml.fun` (PartyKit & Yjs CRDT)** kết hợp **WebRTC DataChannel (PeerJS)**.
+* 🖥️ **Hỗ Trợ Chạy Local / LAN**: Tích hợp sẵn máy chủ Node.js Express REST API & In-Memory Room Controller.
 
 ---
 
 ## 🌟 Tính Năng Nổi Bật
 
-1. **Luật Chơi OTTv2 Chiến Thuật (Bàn cờ $9 \times 9$)**:
-   - 2 phe: **Đỏ (Red)** và **Xanh (Blue)**.
-   - Mỗi phe sở hữu 9 quân cờ: 3 Đấm (Rock), 3 Lá (Paper), 3 Kéo (Scissors).
-   - Di chuyển linh hoạt theo **8 hướng** (ngang, dọc, chéo).
-   - Quy tắc ăn quân chuẩn Oẳn Tù Tì: **Đấm > Kéo > Lá > Đấm**.
-   - Điều kiện thắng đa dạng: **Chiếm ô căn cứ đối phương (`a1` / `i9`)**, bắt hết quân, đối thủ hết nước đi, hoặc hết giờ.
+### 1. ⚔️ Luật Chơi OTTv2 Chiến Thuật (Bàn Cờ $9 \times 9$)
+* **2 Phe Đối Đầu**: Phe Đỏ (**Red** - Căn cứ `a1`) và Phe Xanh (**Blue** - Căn cứ `i9`).
+* **9 Quân Cờ Mỗi Bên**: 3 Đấm (Búa), 3 Lá (Bao), 3 Kéo.
+* **Quy Tắc Di Chuyển**: Mỗi lượt đi 1 ô theo **8 hướng** xung quanh (ngang, dọc, chéo).
+* **Quy Tắc Khắc Chế**: ✊ **Đấm > ✌️ Kéo > 🖐️ Lá > ✊ Đấm**.
+* **Đa Dạng Điều Kiện Thắng**:
+  * 🚩 **Chiếm Căn Cứ**: Đưa bất kỳ 1 quân cờ nào vào căn cứ đối phương (`i9` với Đỏ, `a1` với Xanh).
+  * ⚔️ **Diệt Sạch Quân**: Bắt toàn bộ 9 quân cờ của đối thủ.
+  * 🚫 **Khóa Nước Đi**: Khi đối thủ không còn nước đi hợp lệ.
+  * ⏱️ Đối thủ hết thời gian suy nghĩ lượt hoặc đầu hàng.
 
-2. **Chế Độ Chơi Đa Dạng**:
-   - 🌐 **Online Multiplayer**: Tạo phòng, mật khẩu riêng tư, ghép cặp ngẫu nhiên (Matchmaking), đồng bộ Socket.io thời gian thực.
-   - 👥 **Offline 2 Người (Pass & Play)**: Chơi chung trên một màn hình máy tính hoặc điện thoại không cần kết nối mạng.
-   - 🤖 **Đấu với Máy (Vs AI Bot)**: Luyện tập với Bot tính toán nước đi thông minh.
-   - 👁️ **Chế độ Khán giả (Spectator)**: Xem trực tiếp các trận đấu đang diễn ra.
+### 2. 🕹️ Các Chế Độ Chơi Đa Dạng
+* 🌐 **Online Multiplayer (playhtml Serverless)**:
+  * Tạo phòng chơi trực tuyến, tự động sinh mã phòng 6 ký tự và đường link mời bạn bè.
+  * **Sảnh Chờ Trực Tiếp (Live Room Hub)**: Danh sách phòng được đồng bộ toàn cầu qua PartyKit Cloud theo thời gian thực; hiển thị trạng thái trận đấu, tỉ số, số nước đi, và đồng hồ đếm giờ trực tiếp.
+  * **Chế Độ Khán Giả (Spectator)**: Cho phép người chơi khác vào xem trực tiếp các trận đấu đang diễn ra.
+* 👥 **Chơi 2 Người Trên Cùng Máy (Pass & Play)**: Chơi đối kháng trực tiếp trên cùng một thiết bị mà không cần kết nối mạng.
+* 🤖 **Đấu Với Máy (Vs AI Bot)**: Thuật toán Bot AI đánh giá thế cờ và tìm nước đi tối ưu để luyện tập kỹ năng.
 
-3. **Giao Diện & Trải Nghiệm Người Dùng (UI/UX)**:
-   - Phong cách Cyberpunk / Dark Gaming hiện đại, hiệu ứng Glassmorphism.
-   - Gợi ý nước đi trực quan (chấm xanh khi đi được, vòng đỏ khi có thể ăn quân).
-   - Âm thanh sống động tích hợp Web Audio API (không phụ thuộc file ngoài).
-   - Chatbox & Emoji thời gian thực, bảng lịch sử nước đi trực quan.
-
-4. **Kiến Trúc Tối Giản - Không Cần Database**:
-   - Hoạt động mượt mà với 100% In-Memory State trên Node.js.
-   - Không cần cài đặt MySQL, MongoDB hay Redis.
+### 3. 🎨 Giao Diện & Trải Nghiệm Người Dùng (UI/UX)
+* Phong cách **Dark Gaming / Cyberpunk** hiện đại kết hợp hiệu ứng Glassmorphism.
+* Hiển thị gợi ý nước đi trực quan: chấm xanh cho ô đi được, vòng đỏ phát sáng cho ô có thể bắt quân địch.
+* Hệ thống âm thanh sống động được tạo tại chỗ bằng **Web Audio API** (không lo thiếu file âm thanh).
+* Khung chat, emoji và bảng ghi nhận lịch sử nước đi trực quan theo chuẩn ký hiệu cờ (`e5 ➔ e6`).
 
 ---
 
-## 📁 Cấu Trúc Thư Mục
+## 🏗️ Kiến Trúc Hệ Thống
 
 ```
-otttv2-multiplayer/
+┌────────────────────────────────────────────────────────────────────────┐
+│               HẠ TẦNG CLOUD PARTYKIT (playhtml.partykit.dev)            │
+│                 Đồng bộ Sảnh chờ (Lobby) & Phòng chơi (CRDT)           │
+└────────────────────────────────────────────────────────────────────────┘
+                 ▲                                        ▲
+                 │ (WebSocket CRDT)                       │ (WebSocket CRDT)
+                 ▼                                        ▼
+┌──────────────────────────────────┐    ┌──────────────────────────────────┐
+│             MÁY A                │    │             MÁY B                │
+│ • Sảnh chờ:                      │    │ • Sảnh chờ:                      │
+│   room: "ottv2-global-lobby"     │    │   room: "ottv2-global-lobby"     │
+│   -> Host tạo phòng ott-xxxx     │    │   -> Tự động nhận phòng của A    │
+│ • Trận đấu P2P (WebRTC):         │<──>│ • Trận đấu P2P (WebRTC):         │
+│   Peer ID: ottv2_match_xxxx      │    │   Kết nối trực tiếp tốc độ cao   │
+└──────────────────────────────────┘    └──────────────────────────────────┘
+```
+
+---
+
+## 📁 Cấu Trúc Thư Mục Dự Án
+
+```
+BTL-WEB/
 │
-├── .github/                      # Cấu hình GitHub Actions CI/CD
-│   └── workflows/
-│       └── deploy.yml            # CI/CD tự động kiểm tra & deploy
+├── client/                       # Frontend Web UI (Chạy tĩnh trên GitHub Pages)
+│   ├── index.html                # Giao diện chính SPA (Sảnh chờ & Đấu trường)
+│   ├── assets/
+│   │   └── images/pieces/        # Bộ nhận diện 6 Vector SVG quân cờ sắc nét
+│   ├── css/
+│   │   ├── style.css             # Theme Dark Gaming, responsive đa màn hình
+│   │   ├── board.css             # CSS ma trận bàn cờ 9x9, căn cứ, hiệu ứng
+│   │   └── lobby.css             # CSS sảnh chờ, thẻ phòng trực tiếp, stats bar
+│   └── js/
+│       ├── core/                 # Board, Piece, Rules, Constants
+│       ├── ui/                   # BoardRenderer, BoardControls, SoundManager
+│       ├── network/              # PlayhtmlAdapter (Serverless P2P / PartyKit Cloud)
+│       └── main.js               # Controller điều phối ứng dụng
+│
+├── server/                       # Backend Server Node.js (Tuỳ chọn cho Local/LAN)
+│   ├── config/server.config.js   # Cấu hình PORT, CORS
+│   ├── controllers/              # RoomController, GameController
+│   ├── core/                     # Logic thẩm định nước đi phía server
+│   ├── models/Room.js            # Model phòng chơi In-Memory
+│   ├── sockets/handler.js        # Socket.io Event Dispatcher
+│   └── server.js                 # Entry point máy chủ Express & REST API
+│
+├── shared/                       # Thư viện luật chơi dùng chung Client & Server
+│   └── gameRules.js              # Định nghĩa bàn cờ, 8 hướng, ma trận khắc chế
 │
 ├── docs/                         # Tài liệu báo cáo & đặc tả
-│   ├── rules-ottv2.md            # Chi tiết luật chơi OTTv2 (9x9, ăn quân, căn cứ)
-│   ├── api-specs.md              # Đặc tả sự kiện Socket.io & REST API
-│   └── group-report.md           # Báo cáo phân công công việc 4 thành viên
+│   ├── rules-ottv2.md            # Chi tiết luật chơi OTTv2 mở rộng
+│   ├── api-specs.md              # Đặc tả giao thức Socket.io & REST API
+│   └── group-report.md           # Báo cáo phân công công việc nhóm
 │
-├── server/                       # Backend Server Node.js (Socket.io & Express)
-│   ├── config/
-│   │   └── server.config.js      # Cấu hình PORT, CORS, timeout
-│   ├── controllers/
-│   │   ├── room.controller.js    # Quản lý tạo phòng, danh sách phòng, ghép nhanh
-│   │   └── game.controller.js    # Quản lý nước đi, timer lượt đi, kết thúc ván
-│   ├── core/                     # Logic game OTTv2 phía server (chống gian lận)
-│   │   ├── Board.js              # Quản lý ma trận bàn cờ 9x9
-│   │   ├── Piece.js              # Lớp định nghĩa quân cờ
-│   │   └── RuleEngine.js         # Kiểm tra tính hợp lệ & điều kiện thắng
-│   ├── models/
-│   │   └── Room.js               # Model phòng chơi In-Memory
-│   ├── sockets/
-│   │   ├── handler.js            # Dispatcher xử lý sự kiện kết nối Socket
-│   │   └── events.js             # Danh sách hằng số Socket Event
-│   ├── server.js                 # Entry point khởi chạy HTTP + Socket Server
-│   └── package.json              # Dependencies backend
-│
-├── client/                       # Frontend Web UI (Giao diện người chơi)
-│   ├── index.html                # Trang chính (Lobby & Game Arena)
-│   ├── assets/
-│   │   ├── images/pieces/        # 6 Vector SVG quân cờ sắc nét
-│   │   └── sounds/               # Âm thanh hiệu ứng
-│   ├── css/
-│   │   ├── style.css             # Theme Dark Gaming, responsive layout
-│   │   ├── board.css             # CSS lưới 9x9, highlight 8 hướng, ô căn cứ
-│   │   └── lobby.css             # CSS sảnh chờ, danh sách phòng, chat
-│   └── js/
-│       ├── core/                 # Engine logic client (constants, rules, board)
-│       ├── ui/                   # Render giao diện, điều khiển click/drag, âm thanh
-│       ├── network/              # Socket client & playfull adapter
-│       └── main.js               # Điều phối toàn bộ hoạt động client
-│
-├── shared/                       # Logic dùng chung giữa Client & Server
-│   └── gameRules.js              # Luật OTTv2 chuẩn hoá
-│
-├── .gitignore                    # Bỏ qua node_modules, log files
-├── README.md                     # Hướng dẫn sử dụng
-└── package.json                  # Root npm scripts
+├── index.html                    # Root redirect về /client
+├── README.md                     # Tài liệu hướng dẫn sử dụng
+└── package.json                  # Cấu hình dự án & scripts
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt & Chạy
+## 🚀 Hướng Dẫn Cài Đặt & Chạy Ứng Dụng
 
-### Cách 1: Chạy Server Online Multiplayer (Local / LAN)
+### Cách 1: Chơi Ngay Trên Web (Không Cần Cài Đặt)
+
+Truy cập trực tiếp đường dẫn GitHub Pages:  
+👉 **[https://thing-or-think.github.io/BT1-WEB/](https://thing-or-think.github.io/BT1-WEB/)**
+
+---
+
+### Cách 2: Chạy Trên Máy Cục Bộ (Localhost / Mạng LAN)
 
 1. **Yêu cầu môi trường**:
-   - Đã cài đặt [Node.js](https://nodejs.org/) (phiên bản 16.x trở lên).
+   * Đã cài đặt [Node.js](https://nodejs.org/) (phiên bản 18.x trở lên).
+   * Git.
 
-2. **Cài đặt thư viện**:
+2. **Clone mã nguồn về máy**:
+   ```bash
+   git clone https://github.com/thing-or-think/BT1-WEB.git
+   cd BT1-WEB
+   ```
+
+3. **Cài đặt dependencies**:
    ```bash
    npm install
    ```
 
-3. **Khởi chạy ứng dụng**:
+4. **Khởi chạy máy chủ**:
    ```bash
    npm start
    ```
 
-4. **Trải nghiệm**:
-   - Mở trình duyệt truy cập: `http://localhost:3000`
-   - Để test 2 người chơi: Mở 2 tab trình duyệt hoặc gửi link mạng LAN (ví dụ: `http://192.168.1.x:3000`) cho máy khác cùng mạng WiFi!
-
----
-
-### Cách 2: Chạy trực tiếp trên GitHub Pages (Offline / Single Player)
-
-1. Đẩy mã nguồn lên kho chứa (Repository) GitHub của bạn.
-2. Vào **Settings** -> **Pages** -> Chọn nhánh `main` và thư mục `/client` (hoặc cấu hình GitHub Actions từ `.github/workflows/deploy.yml`).
-3. Truy cập đường link GitHub Pages được cấp để chơi ngay chế độ Offline và Đấu với AI mà không cần cài đặt bất kỳ server nào!
-
----
-
-## 📖 Tóm Tắt Luật Chơi OTTv2
-
-* **Kích thước bàn cờ**: $9 \times 9$ (81 ô).
-* **Quân cờ mỗi bên**: 3 Đấm (Búa), 3 Lá (Bao), 3 Kéo.
-* **Căn cứ**: Phe Đỏ tại `a1`, phe Xanh tại `i9`.
-* **Di chuyển**: Quân cờ được đi 1 ô theo 8 hướng xung quanh.
-* **Ăn quân**:
-  * ✊ **Đấm** ăn ✌️ **Kéo**
-  * ✌️ **Kéo** ăn 🖐️ **Lá**
-  * 🖐️ **Lá** ăn ✊ **Đấm**
-  * Không thể đi vào ô có quân cùng loại hoặc quân cùng phe.
-* **Điều kiện thắng**:
-  1. Chiếm được ô căn cứ đối phương (`i9` với Đỏ, `a1` với Xanh).
-  2. Ăn sạch toàn bộ quân của đối phương.
-  3. Đối phương không còn nước đi hợp lệ hoặc hết thời gian lượt đi.
+5. **Mở trình duyệt**:
+   * Truy cập: `http://localhost:3000`
+   * Để chơi 2 người qua mạng nội bộ: Mở `http://<IP_MÁY_BẠN>:3000` trên thiết bị khác cùng mạng WiFi (ví dụ: `http://192.168.1.15:3000`).
 
 ---
 
@@ -144,12 +158,13 @@ otttv2-multiplayer/
 
 | STT | Họ và Tên | Vai Trò | Nhiệm Vụ Chính |
 |:---:|:---|:---|:---|
-| 1 | Thành viên 1 | Leader & Frontend UI | Thiết kế giao diện Web, CSS Animation, Responsive, Bàn cờ 9x9 |
-| 2 | Thành viên 2 | Client Logic & Interaction | Xử lý tương tác quân cờ, gợi ý 8 hướng, Web Audio, Bot AI |
-| 3 | Thành viên 3 | Backend & Socket.io | Xây dựng Server Express, Room Manager, Đồng bộ Socket thời gian thực |
-| 4 | Thành viên 4 | Game Core & Testing | Thuật toán RuleEngine, thẩm định nước đi chống hack, Viết tài liệu |
+| 1 | **Thành viên 1** | *Leader & Frontend UI* | Thiết kế giao diện SPA, Dark Gaming Theme, Responsive, Vector SVG quân cờ |
+| 2 | **Thành viên 2** | *Client Logic & Audio* | Điều khiển click/drag quân cờ, gợi ý 8 hướng, Web Audio API, Bot AI |
+| 3 | **Thành viên 3** | *Real-Time Network* | Tích hợp Serverless `playhtml.fun` PartyKit, WebRTC P2P, Room Controller |
+| 4 | **Thành viên 4** | *Game Core & QA Lead* | Xây dựng RuleEngine dùng chung, kiểm thử toàn diện, viết tài liệu kỹ thuật |
 
 ---
 
 ## 📜 Giấy Phép (License)
-Dự án được phát triển phục vụ mục đích học tập và nghiên cứu theo giấy phép [MIT](LICENSE).
+
+Dự án được phát hành theo giấy phép [MIT License](LICENSE) phục vụ mục đích học tập và nghiên cứu.
