@@ -19,6 +19,7 @@ const CONFIG = {
   GAME_MODES: {
     ONLINE: 'ONLINE',
     OFFLINE_2P: 'OFFLINE_2P',
-    AI: 'AI'
+    AI: 'AI',
+    PLAYHTML: 'PLAYHTML'
   }
 };

@@ -61,12 +61,26 @@
           <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Đấu Với Bot</button>
         </div>
 
+        <div class="mode-card highlight" id="btn-mode-playhtml">
+          <div class="mode-icon">🌐</div>
+          <h3>Tạo Phòng Serverless</h3>
+          <p>Chơi Online qua link mời (playhtml) trực tiếp trên GitHub Pages không cần Server!</p>
+          <button class="btn btn-success" style="width: 100%; margin-top: auto;">➕ Tạo Phòng & Lấy Link</button>
+        </div>
+
         <div class="mode-card" id="btn-quick-match">
           <div class="mode-icon">⚡</div>
-          <h3>Ghép Nhanh Online</h3>
-          <p>Tự động tìm kiếm đối thủ trực tuyến đang chờ ghép phòng trên Server.</p>
-          <button class="btn btn-success" style="width: 100%; margin-top: auto;">Tìm Trận Nhanh</button>
+          <h3>Ghép Nhanh Socket.io</h3>
+          <p>Tự động tìm kiếm đối thủ trực tuyến đang chờ ghép phòng trên Server Node.js.</p>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: auto;">Tìm Trận Nhanh</button>
         </div>
+      </div>
+
+      <!-- Khung Vào Phòng Bằng Mã / Link Nhanh -->
+      <div class="serverless-join-container" style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center; background: var(--bg-card); padding: 14px 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); flex-wrap: wrap;">
+        <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">🔗 Vào Phòng Bằng Mã / Link:</span>
+        <input type="text" id="input-join-room-code" class="form-control" placeholder="Dán link hoặc nhập mã (VD: ott-1234)" style="max-width: 320px; font-size: 0.85rem;">
+        <button id="btn-join-room-code" class="btn btn-primary" style="padding: 8px 18px; font-size: 0.85rem;">Tham Gia</button>
       </div>
 
       <!-- Danh sách phòng Online -->
@@ -83,6 +97,19 @@
 
     <!-- B. ĐẤU TRƯỜNG BÀN CỜ (GAME ARENA VIEW) -->
     <section id="arena-view" class="view-section">
+      <!-- Thanh chia sẻ link phòng Serverless (Hiển thị khi chơi phòng playhtml) -->
+      <div id="room-share-bar" class="room-share-bar" style="display: none; margin-bottom: 16px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); padding: 10px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.2rem;">🔗</span>
+          <span style="font-weight: 600; font-size: 0.85rem; color: #93c5fd;">Link Mời Đối Thủ:</span>
+          <input type="text" id="share-room-url" class="form-control" readonly style="width: 260px; padding: 4px 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4);" value="">
+        </div>
+        <button id="btn-copy-room-link" class="btn btn-primary" style="padding: 5px 14px; font-size: 0.8rem;">📋 Sao Chép Link</button>
+      </div>
+
+      <!-- Phần tử ảo đồng bộ cho playhtml -->
+      <div id="ottv2-sync-hub" style="display: none;"></div>
+
       <!-- Thanh thông tin đối đầu 2 người chơi -->
       <div class="players-bar">
         <div class="player-panel red">
@@ -246,6 +273,9 @@
   <script src="js/ui/controls.js"></script>
 
   <!-- Network Modules -->
+  <!-- Thư viện playhtml Serverless Multiplayer (PartyKit & Yjs) -->
+  <script src="https://unpkg.com/playhtml@latest/dist/playhtml.min.js"></script>
+  <script src="js/network/playhtmlAdapter.js"></script>
   <script src="js/network/socketClient.js"></script>
   <script src="js/network/playfullAdapter.js"></script>
 
