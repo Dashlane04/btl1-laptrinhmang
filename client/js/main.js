@@ -461,6 +461,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(data.message, 'info');
   });
 
+  playhtmlAdapter.on('network:status', (data) => {
+    if (data.status === 'CONNECTED_TO_HOST') {
+      showToast('🔗 Đã kết nối P2P thành công với Chủ phòng!', 'success');
+    } else if (data.status === 'HOST_DISCONNECTED') {
+      showToast('⚠️ Chủ phòng đã ngắt kết nối!', 'warning');
+    }
+  });
+
   // 10. GÁN SỰ KIỆN CHO CÁC NÚT BẤM VÀ FORM
 
   // Chế độ Offline Pass & Play
