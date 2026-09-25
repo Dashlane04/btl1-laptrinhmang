@@ -1,265 +1,73 @@
-# 📡 ĐẶC TẢ GIAO THỨC SOCKET.IO & API (API SPECS)
+# Đặc tả giao tiếp OTTv2
 
-Tài liệu này định nghĩa chi tiết toàn bộ các sự kiện Socket.io thời gian thực và REST API giữa Client và Server của hệ thống **OTTv2 Multiplayer**.
+Ứng dụng có hai chế độ mạng:
 
----
+- Chạy bằng `npm start`: Express phục vụ giao diện, Socket.IO giữ trạng thái và xác thực nước đi.
+- GitHub Pages: trang tĩnh dùng PlayHTML để đồng bộ phòng; host của phòng xác thực nước đi bằng cùng bộ luật dùng chung.
 
-## 1. Tổng quan Kiến Trúc Giao Tiếp
+## Tọa độ
 
-```
-+------------------+                    +--------------------+
-|                  | --- HTTP GET API ->|   Express Server   |
-|   Client (Web)   |                    |                    |
-|                  |<== Socket.io ====> |  Socket.io Server  |
-+------------------+    (Bi-directional)|(In-Memory Manager) |
-                                        +--------------------+
-```
+Socket.IO dùng `{ "row": 0..8, "col": 0..8 }`. `row: 0` là hàng 9 và `row: 8` là hàng 1; `col: 0` là cột a.
 
-* **Giao thức**: WebSocket / Socket.io Engine v4.
-* **Định dạng dữ liệu**: JSON.
-* **Trạng thái**: Server quản lý In-Memory State theo từng phòng chơi (`Room`).
+## REST API chỉ đọc
 
----
+### `GET /api/status`
 
-## 2. REST API Endpoints
+Trả về trạng thái server, phiên bản, thống kê phòng và thời điểm hiện tại.
 
-### 2.1. Lấy thông tin trạng thái Server & Thống kê phòng
-* **Endpoint**: `GET /api/status`
-* **Response**:
-```json
-{
-  "status": "online",
-  "engine": "Dual-Engine: Node.js REST/Socket + playhtml Serverless P2P",
-  "version": "2.2.0",
-  "name": "OTTv2 Game Server",
-  "stats": {
-    "totalRooms": 5,
-    "waitingRooms": 2,
-    "playingRooms": 3,
-    "finishedRooms": 0,
-    "totalPlayers": 8,
-    "totalSpectators": 4,
-    "totalUsers": 12,
-    "timestamp": 1726880000000
-  },
-  "timestamp": 1726880000000
-}
-```
+### `GET /api/rooms?status=WAITING|PLAYING|FINISHED`
 
-### 2.2. Lấy danh sách phòng chơi công khai & Thời gian thi đấu
-* **Endpoint**: `GET /api/rooms`
-* **Query Params**: `?status=WAITING` hoặc `?status=PLAYING` (tuỳ chọn)
-* **Response**:
-```json
-{
-  "success": true,
-  "count": 2,
-  "stats": {
-    "totalRooms": 2,
-    "waitingRooms": 1,
-    "playingRooms": 1,
-    "totalPlayers": 3,
-    "totalSpectators": 1,
-    "totalUsers": 4
-  },
-  "rooms": [
-    {
-      "id": "ott-a1b2c3",
-      "name": "Đại Chiến OTT Cúp 1",
-      "hasPassword": false,
-      "status": "WAITING",
-      "playerCount": 1,
-      "maxPlayers": 2,
-      "spectatorCount": 0,
-      "playerRed": { "name": "NamPro", "score": 0 },
-      "playerBlue": null,
-      "timePerTurn": 30,
-      "currentTurn": null,
-      "createdAt": 1726880000000,
-      "gameStartedAt": null,
-      "finishedAt": null,
-      "elapsedTimeMs": 0,
-      "waitingTimeMs": 45000,
-      "moveCount": 0,
-      "scores": { "red": 0, "blue": 0 }
-    },
-    {
-      "id": "ott-x7y8z9",
-      "name": "Chung Kết OTTv2",
-      "hasPassword": false,
-      "status": "PLAYING",
-      "playerCount": 2,
-      "maxPlayers": 2,
-      "spectatorCount": 3,
-      "playerRed": { "name": "Player1", "score": 1 },
-      "playerBlue": { "name": "Player2", "score": 0 },
-      "timePerTurn": 30,
-      "currentTurn": "RED",
-      "createdAt": 1726879800000,
-      "gameStartedAt": 1726879900000,
-      "finishedAt": null,
-      "elapsedTimeMs": 245000,
-      "waitingTimeMs": 0,
-      "moveCount": 14,
-      "scores": { "red": 1, "blue": 0 }
-    }
-  ],
-  "timestamp": 1726880145000
-}
-```
+Trả về danh sách phòng công khai. Tham số `status` là tùy chọn.
 
-### 2.3. Lấy thống kê nhanh toàn hệ thống
-* **Endpoint**: `GET /api/rooms/stats`
+### `GET /api/rooms/:id`
 
----
+Trả về tóm tắt một phòng hoặc HTTP `404` nếu phòng không tồn tại.
 
-## 3. Danh sách Sự kiện Socket.io (Socket Events)
+Server không nhận REST API ghi bàn cờ. Mọi thay đổi trận đấu phải đi qua Socket.IO và được server kiểm tra.
 
-### 3.1. Nhóm Quản lý Phòng (Room Management)
+## Sự kiện Socket.IO
 
-#### A. Client $\rightarrow$ Server: `room:create`
-Tạo phòng chơi mới.
-* **Payload**:
-```json
-{
-  "roomName": "Phòng của Nam",
-  "playerName": "NamPro",
-  "password": "",
-  "timePerTurn": 30
-}
-```
+### Client gửi
 
-#### B. Client $\rightarrow$ Server: `room:join`
-Tham gia vào một phòng chơi đã tồn tại.
-* **Payload**:
-```json
-{
-  "roomId": "room-abc123",
-  "playerName": "HùngGame",
-  "password": ""
-}
-```
+| Sự kiện | Payload | Ý nghĩa |
+|---|---|---|
+| `room:create` | `{ roomId?, roomName, playerName, password? }` | Tạo phòng. `roomId` phải có dạng `ott-` và 4–12 ký tự chữ thường/số. |
+| `room:join` | `{ roomId, playerName, password? }` | Vào phòng có sẵn. Hai người đầu là Đỏ/Xanh; người tiếp theo là khán giả. |
+| `room:quick_match` | `{ playerName }` | Vào phòng chờ không mật khẩu hoặc tạo phòng mới. |
+| `room:leave` | Không có | Rời phòng hiện tại. |
+| `game:move` | `{ from: {row, col}, to: {row, col} }` | Đề nghị một nước đi; dữ liệu bàn cờ do client gửi kèm sẽ bị bỏ qua. |
+| `game:rematch_request` | Không có | Đồng ý đấu lại sau khi ván kết thúc. |
+| `chat:send` | `{ message }` | Gửi tin nhắn; server cắt tối đa 120 ký tự. |
 
-#### C. Client $\rightarrow$ Server: `room:quick_match`
-Tìm và ghép phòng ngẫu nhiên đang chờ người.
-* **Payload**:
-```json
-{
-  "playerName": "Gamer123"
-}
-```
+### Server gửi
 
-#### D. Server $\rightarrow$ Client: `room:joined`
-Phản hồi khi người chơi vào phòng thành công.
-* **Payload**:
-```json
-{
-  "roomId": "room-abc123",
-  "role": "RED", // "RED" | "BLUE" | "SPECTATOR"
-  "room": {
-    "id": "room-abc123",
-    "name": "Phòng của Nam",
-    "status": "PLAYING",
-    "playerRed": { "id": "socket-1", "name": "NamPro" },
-    "playerBlue": { "id": "socket-2", "name": "HùngGame" },
-    "spectators": [],
-    "board": [...],
-    "currentTurn": "RED",
-    "timePerTurn": 30,
-    "turnTimeRemaining": 30
-  }
-}
-```
+| Sự kiện | Nội dung chính |
+|---|---|
+| `room:list` | Danh sách phòng công khai. |
+| `room:joined` | `{ roomId, role, side, room }`. |
+| `room:updated` | Trạng thái phòng sau khi người dùng vào/rời. |
+| `game:start` | `{ message, room }` khi đủ hai người. |
+| `game:move_success` | `{ moveRecord, board, nextTurn, stats }` sau khi server chấp nhận nước đi. |
+| `game:over` | `{ winner, reason, message, room }`. |
+| `game:rematch_response` | Báo một người đã yêu cầu đấu lại. |
+| `game:rematch_start` | `{ message, room }` khi cả hai cùng đồng ý. |
+| `chat:receive` | `{ sender, side, message, timestamp }`. |
+| `error:message` | `{ message }` khi yêu cầu không hợp lệ. |
 
-#### E. Server $\rightarrow$ Client: `room:update`
-Cập nhật thông tin phòng khi có người vào/rời phòng.
-* **Payload**: Đối tượng Room hiện tại.
+## Trạng thái phòng
 
----
+`room` gồm các trường chính: `id`, `name`, `status`, `playerRed`, `playerBlue`, `spectators`, `board`, `currentTurn`, `moveHistory`, `scores`, `createdAt`, `gameStartedAt`, `finishedAt` và `stats`. Dữ liệu gửi cho client không chứa Socket ID.
 
-## 3.2. Nhóm Diễn biến Trận đấu (Game Play)
+Trạng thái là `WAITING`, `PLAYING` hoặc `FINISHED`. Đỏ đi trước. Không có đồng hồ lượt.
 
-#### A. Client $\rightarrow$ Server: `game:move`
-Người chơi gửi nước đi dự kiến.
-* **Payload**:
-```json
-{
-  "from": { "row": 1, "col": 1 },
-  "to": { "row": 2, "col": 2 }
-}
-```
+## Xác thực nước đi
 
-#### B. Server $\rightarrow$ Client: `game:move_success`
-Server kiểm tra hợp lệ, cập nhật trạng thái bàn cờ và thông báo cho cả phòng.
-* **Payload**:
-```json
-{
-  "moveRecord": {
-    "from": { "row": 8, "col": 1 },
-    "to": { "row": 7, "col": 1 },
-    "side": "RED",
-    "capturedPiece": null
-  },
-  "nextTurn": "BLUE",
-  "board": [...],
-  "stats": { "RED": 9, "BLUE": 9 }
-}
-```
+Server từ chối nước đi khi trận chưa bắt đầu, sai lượt, tọa độ không phải số nguyên trong khoảng 0–8, ô nguồn không có quân đúng phe, hoặc ô đích vi phạm luật di chuyển/ăn quân.
 
-#### C. Server $\rightarrow$ Client: `game:over`
-Thông báo kết thúc ván cờ.
-* **Payload**:
-```json
-{
-  "winner": "RED",
-  "reason": "BASE_INVADED",
-  "message": "Phe Đỏ đã chiếm được căn cứ i9 và giành chiến thắng!"
-}
-```
+`game:over.reason` có thể là:
 
-`reason` là `BASE_INVADED` hoặc `PIECE_TYPE_ELIMINATED`.
+- `BASE_INVADED`: Xanh vào `a1` hoặc Đỏ vào `i9`.
+- `PIECE_TYPE_ELIMINATED`: một phe mất sạch Đấm, Lá hoặc Kéo.
+- `OPPONENT_LEFT`: đối thủ rời khi trận đang diễn ra.
 
-#### D. Client $\rightarrow$ Server: `game:rematch_request`
-Yêu cầu đấu lại ván mới.
-
----
-
-## 3.3. Nhóm Giao tiếp & Tương tác (Chat & Emotes)
-
-#### A. Client $\rightarrow$ Server: `chat:send`
-* **Payload**:
-```json
-{
-  "message": "Nước đi hay đấy bạn!"
-}
-```
-
-#### B. Server $\rightarrow$ Client: `chat:receive`
-* **Payload**:
-```json
-{
-  "sender": "NamPro",
-  "side": "RED",
-  "message": "Nước đi hay đấy bạn!",
-  "timestamp": 1726880010000
-}
-```
-
----
-
-## 4. Xử lý Lỗi (Error Handling)
-
-Server gửi sự kiện `error:message` khi phát hiện vi phạm:
-```json
-{
-  "code": "INVALID_MOVE",
-  "message": "Nước đi không hợp lệ: Đấm không thể đi vào ô có Kéo cùng phe hoặc bị khắc chế!"
-}
-```
-
-Mã lỗi chuẩn:
-* `ROOM_FULL`: Phòng đã đủ 2 người chơi.
-* `ROOM_NOT_FOUND`: Mã phòng không tồn tại.
-* `WRONG_PASSWORD`: Mật khẩu phòng không đúng.
-* `NOT_YOUR_TURN`: Chưa tới lượt đi của bạn.
-* `INVALID_MOVE`: Nước đi vi phạm quy tắc 8 hướng hoặc luật ăn quân OTTv2.
+Hết giờ, đầu hàng và hết nước đi không phải điều kiện thắng.

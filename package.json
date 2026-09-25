@@ -1,7 +1,7 @@
 {
   "name": "otttv2-multiplayer",
-  "version": "2.1.0",
-  "description": "Trò chơi cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer Real-time trên nền Web (Serverless với playhtml Cloud & CRDT)",
+  "version": "3.0.0",
+  "description": "Trò chơi OTTv2 9x9 multiplayer qua Socket.IO hoặc PlayHTML",
   "main": "server/server.js",
   "scripts": {
     "postinstall": "node -e \"require('fs').cpSync('node_modules/playhtml/dist','client/vendor/playhtml',{recursive:true})\"",
@@ -17,9 +17,7 @@
     "ottv2",
     "chess",
     "playhtml",
-    "serverless",
-    "partykit",
-    "crdt",
+    "socket.io",
     "realtime",
     "multiplayer",
     "btl-web"

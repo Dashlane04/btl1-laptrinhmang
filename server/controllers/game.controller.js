@@ -11,8 +11,6 @@ class GameController {
    * @param {string} playerSide - 'RED' | 'BLUE'
    * @param {Object} from - { row, col }
    * @param {Object} to - { row, col }
-   * @param {Function} onTick - Callback đồng bộ timer
-   * @param {Function} onTimeout - Callback khi hết giờ
    * @returns {{ success: boolean, error?: string, moveRecord?: Object, isGameOver?: boolean, gameOverData?: Object }}
    */
   handleMove(room, playerSide, from, to) {
@@ -69,7 +67,7 @@ class GameController {
       };
     }
 
-    // 6. Chuyển lượt và reset đồng hồ đếm ngược
+    // 6. Chuyển lượt
     room.switchTurn();
 
     return {
@@ -85,8 +83,6 @@ class GameController {
    * Xử lý bầu chọn đấu lại (Rematch)
    * @param {Object} room 
    * @param {string} socketId 
-   * @param {Function} onTick 
-   * @param {Function} onTimeout 
    * @returns {{ requested: boolean, startNewGame: boolean }}
    */
   handleRematch(room, socketId) {

@@ -35,3 +35,9 @@ Khi chạy bằng `npm start`, Socket.IO giữ trạng thái và server thẩm �
 Workflow `.github/workflows/deploy.yml` chạy test trên Node.js 22 và 24 khi push vào `main-v2`, rồi deploy thư mục `client` lên GitHub Pages.
 
 Trong repository, vào **Settings → Pages → Source** và chọn **GitHub Actions** một lần nếu Pages chưa được bật.
+
+## Tài liệu
+
+- [Luật chơi](docs/rules-ottv2.md)
+- [Socket.IO và REST API](docs/api-specs.md)
+- [Mẫu báo cáo phân công](docs/group-report.md)
