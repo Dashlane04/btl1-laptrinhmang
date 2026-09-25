@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTTv2 - Cờ Oẳn Tù Tì 9x9 Multiplayer (playhtml Serverless)</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/lobby.css">
+</head>
+<body>
+
+  <!-- 1. HEADER CHÍNH -->
+  <header class="app-header">
+    <div class="logo-container">
+      <div class="logo-icon">⚔️</div>
+      <div class="logo-text">
+        <h1>OTTV2 MULTIPLAYER</h1>
+        <p>Cờ Oẳn Tù Tì Chiến Thuật 9x9 • playhtml Serverless</p>
+      </div>
+    </div>
+
+    <div class="header-user-info">
+      <div class="user-badge">
+        <span class="user-avatar">👤</span>
+        <input type="text" id="user-nickname" class="form-control" style="width: 130px; padding: 4px 8px; font-size: 0.82rem;" value="Gamer123" placeholder="Tên của bạn">
+      </div>
+      <div class="user-badge" title="Đồng bộ thời gian thực qua playhtml Cloud & BroadcastChannel">
+        <span id="connection-status" class="status-indicator">🌐 playhtml Ready</span>
+      </div>
+      <button id="btn-rules-modal" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">📖 Luật Chơi</button>
+      <button id="btn-sound-toggle" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">🔊 Âm thanh</button>
+    </div>
+  </header>
+
+  <!-- 2. MAIN CONTAINER (VIEWS) -->
+  <main class="main-container">
+
+    <!-- A. SẢNH CHỜ (LOBBY VIEW) -->
+    <section id="lobby-view" class="view-section active">
+      <div class="lobby-header">
+        <h2>Chọn Chế Độ Chơi</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Đồng bộ thời gian thực qua playhtml PartyKit & CRDT • Không cần máy chủ riêng</p>
+      </div>
+
+      <!-- Lựa chọn chế độ chơi chính -->
+      <div class="mode-cards">
+        <div class="mode-card highlight" id="btn-mode-playhtml">
+          <div class="mode-icon">🌐</div>
+          <h3>Tạo Phòng Online (playhtml)</h3>
+          <p>Tạo phòng chơi trực tuyến, lấy Link mời bạn bè hoặc chia sẻ mã phòng để cùng đấu cờ.</p>
+          <button class="btn btn-success" style="width: 100%; margin-top: auto;">➕ Tạo Phòng Mới</button>
+        </div>
+
+        <div class="mode-card" id="btn-mode-offline">
+          <div class="mode-icon">👥</div>
+          <h3>Chơi 2 Người Cùng Máy</h3>
+          <p>Chơi đối kháng trực tiếp Pass & Play trên cùng một máy tính, tablet hoặc điện thoại.</p>
+          <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Chơi Pass & Play</button>
+        </div>
+
+        <div class="mode-card" id="btn-mode-ai">
+          <div class="mode-icon">🤖</div>
+          <h3>Đấu Với Máy (AI Bot)</h3>
+          <p>Luyện tập kỹ năng và thế cờ Oẳn Tù Tì đối đầu với Bot máy tính thông minh.</p>
+          <button class="btn btn-primary" style="width: 100%; margin-top: auto;">Đấu Với Bot</button>
+        </div>
+      </div>
+
+      <!-- Khung Vào Phòng Bằng Mã / Link Nhanh -->
+      <div class="serverless-join-container" style="margin-top: 10px; background: var(--bg-card); padding: 20px 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); text-align: center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🔗 Tham Gia Phòng Bằng Mã Hoặc Link Mời
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 14px;">
+          Nhập mã phòng 6 ký tự (VD: <code>ott-7x2a</code>) hoặc dán đường link phòng mà bạn bè đã gửi cho bạn:
+        </p>
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="input-join-room-code" class="form-control" placeholder="Nhập mã phòng hoặc dán link URL..." style="max-width: 360px; font-size: 0.9rem; padding: 9px 14px;">
+          <button id="btn-join-room-code" class="btn btn-primary" style="padding: 9px 22px; font-size: 0.9rem; font-weight: 600;">
+            🚀 Vào Phòng Ngay
+          </button>
+        </div>
+      </div>
+
+      <!-- Khung Danh Sách & Giám Sát Phòng Chơi (Live Room Hub) -->
+      <div class="room-section" id="live-room-section">
+        <div class="room-section-header">
+          <div class="room-section-title">
+            <span class="pulse-indicator"></span>
+            <h3>Sảnh Trực Tiếp & Giám Sát Phòng Chơi</h3>
+          </div>
+          <button id="btn-refresh-rooms" class="btn btn-secondary btn-refresh-rooms" title="Tải lại danh sách phòng">
+            <span class="icon-spin">🔄</span> Làm mới
+          </button>
+        </div>
+
+        <!-- 1. Thanh Thống Kê Tổng Quan (Dashboard Stats Bar) -->
+        <div class="lobby-stats-bar">
+          <div class="stat-card">
+            <div class="stat-icon">🏠</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-rooms">0</span>
+              <span class="stat-label">Tổng số phòng</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-waiting-rooms" style="color: #34d399;">0</span>
+              <span class="stat-label">Đang chờ đối thủ</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚔️</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-playing-rooms" style="color: #f87171;">0</span>
+              <span class="stat-label">Đang thi đấu</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-users" style="color: #93c5fd;">0</span>
+              <span class="stat-label">Người chơi online</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Thanh Công Cụ Bộ Lọc & Tìm Kiếm (Toolbar) -->
+        <div class="room-toolbar">
+          <div class="room-filter-tabs" id="room-filter-tabs">
+            <button class="filter-tab active" data-filter="ALL">
+              Tất Cả <span class="badge-count" id="count-filter-all">0</span>
+            </button>
+            <button class="filter-tab" data-filter="WAITING">
+              🟢 Đang Chờ (1/2) <span class="badge-count" id="count-filter-waiting">0</span>
+            </button>
+            <button class="filter-tab" data-filter="PLAYING">
+              🔴 Đang Thi Đấu (2/2) <span class="badge-count" id="count-filter-playing">0</span>
+            </button>
+            <button class="filter-tab" data-filter="SPECTATE">
+              👁️ Có Thể Xem <span class="badge-count" id="count-filter-spectate">0</span>
+            </button>
+          </div>
+
+          <div class="room-search-wrapper">
+            <div class="room-search-box">
+              <span class="room-search-icon">🔍</span>
+              <input type="text" id="input-search-rooms" class="form-control" placeholder="Tìm tên hoặc mã phòng...">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Lưới Danh Sách Thẻ Phòng (Room Grid Container) -->
+        <div class="room-list-grid" id="room-list-grid">
+          <!-- Render động qua JavaScript -->
+        </div>
+      </div>
+    </section>
+
+    <!-- B. ĐẤU TRƯỜNG BÀN CỜ (GAME ARENA VIEW) -->
+    <section id="arena-view" class="view-section">
+      <!-- Thanh chia sẻ link phòng Serverless (Hiển thị khi chơi phòng playhtml) -->
+      <div id="room-share-bar" class="room-share-bar" style="display: none; margin-bottom: 16px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); padding: 10px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 1.2rem;">🔗</span>
+          <span style="font-weight: 700; font-size: 0.85rem; color: #93c5fd;" id="room-code-badge">Phòng: OTT</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">| Link mời:</span>
+          <input type="text" id="share-room-url" class="form-control" readonly style="width: 250px; padding: 4px 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4);" value="">
+        </div>
+        <button id="btn-copy-room-link" class="btn btn-primary" style="padding: 5px 14px; font-size: 0.8rem;">📋 Sao Chép Link</button>
+      </div>
+
+      <!-- Phần tử ảo đồng bộ cho playhtml -->
+      <div id="ottv2-sync-hub" style="display: none;"></div>
+
+      <!-- Thanh thông tin đối đầu 2 người chơi -->
+      <div class="players-bar">
+        <div class="player-panel red">
+          <div class="player-avatar">🔴</div>
+          <div>
+            <div id="player-red-name" class="player-name">Người chơi 1 (Đỏ)</div>
+            <div id="player-red-score" class="player-score">Điểm: 0</div>
+          </div>
+        </div>
+
+        <div class="turn-timer-box">
+          <div id="turn-indicator" class="turn-indicator">LƯỢT: PHE ĐỎ</div>
+          <div id="timer-countdown" class="timer-countdown">30</div>
+        </div>
+
+        <div class="player-panel blue">
+          <div class="player-avatar">🔵</div>
+          <div>
+            <div id="player-blue-name" class="player-name">Người chơi 2 (Xanh)</div>
+            <div id="player-blue-score" class="player-score">Điểm: 0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arena-layout">
+        <!-- Bảng điều khiển chức năng bên trái -->
+        <div class="sidebar-panel" style="gap: 12px;">
+          <div class="panel-title">Hành Động</div>
+          <button id="btn-surrender" class="btn btn-danger" style="width: 100%;">🏳️ Đầu Hàng</button>
+          <button id="btn-leave-arena" class="btn btn-secondary" style="width: 100%;">🚪 Rời Phòng</button>
+          
+          <div style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; background: var(--bg-tertiary); padding: 10px; border-radius: var(--radius-md);">
+            <strong>📌 Căn Cứ Chiến Lược:</strong><br>
+            • 🔴 Đỏ: Căn cứ <code>a1</code><br>
+            • 🔵 Xanh: Căn cứ <code>i9</code><br>
+            • Chiếm căn cứ địch để thắng tức thì!
+          </div>
+        </div>
+
+        <!-- Bàn cờ trung tâm 9x9 -->
+        <div id="board-container" class="board-container">
+          <!-- Bàn cờ render động qua Javascript -->
+        </div>
+
+        <!-- Bảng lịch sử & Chat bên phải -->
+        <div class="arena-sidebar">
+          <div class="sidebar-panel">
+            <div class="panel-title">📜 Lịch Sử Nước Đi</div>
+            <div id="move-history-list" class="move-history-list"></div>
+          </div>
+
+          <div class="sidebar-panel chat-container">
+            <div class="panel-title">💬 Trò Chuyện</div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-row">
+              <input type="text" id="chat-input" class="chat-input" placeholder="Nhập tin nhắn..." maxlength="120">
+              <button id="btn-chat-send" class="btn btn-primary" style="padding: 8px 12px;">Gửi</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 3. MODALS -->
+
+  <!-- Modal Tạo Phòng Online playhtml -->
+  <div id="create-room-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Tạo Phòng Online Mới (playhtml)</h2>
+        <button id="btn-close-create-modal" class="modal-close">&times;</button>
+      </div>
+      <form id="form-create-room">
+        <div class="form-group">
+          <label for="input-room-name">Tên Phòng</label>
+          <input type="text" id="input-room-name" class="form-control" placeholder="Ví dụ: Đại Chiến OTT" required maxlength="30" value="Đại Chiến OTT">
+        </div>
+        <div class="form-group">
+          <label for="select-time-turn">Thời gian mỗi lượt</label>
+          <select id="select-time-turn" class="form-control">
+            <option value="15">15 Giây (Chớp nhoáng)</option>
+            <option value="30" selected>30 Giây (Chuẩn)</option>
+            <option value="60">60 Giây (Thong thả)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px; font-weight: 700; padding: 10px;">
+          ➕ Khởi Tạo Phòng & Lấy Link Mời
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Kết Thúc Ván Đấu -->
+  <div id="game-over-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align: center;">
+      <h2 id="game-over-title" style="font-size: 1.6rem; margin-bottom: 12px;">🎉 CHIẾN THẮNG!</h2>
+      <p id="game-over-message" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;"></p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="btn-rematch" class="btn btn-primary">🔄 Đấu Lại</button>
+        <button id="btn-close-game-over" class="btn btn-secondary">Về Sảnh Chờ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Hướng Dẫn Luật Chơi -->
+  <div id="rules-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h2>📖 Hướng Dẫn Luật Chơi OTTv2 (9x9)</h2>
+        <button id="btn-close-rules" class="modal-close">&times;</button>
+      </div>
+      <div style="font-size: 0.9rem; line-height: 1.6; color: #d1d5db;">
+        <h4 style="color: #60a5fa; margin: 12px 0 6px;">1. Quy tắc Ăn Quân:</h4>
+        <p>• ✊ <strong>Đấm (Búa)</strong> ăn ✌️ <strong>Kéo</strong><br>
+           • ✌️ <strong>Kéo</strong> ăn 🖐️ <strong>Lá (Bao)</strong><br>
+           • 🖐️ <strong>Lá (Bao)</strong> ăn ✊ <strong>Đấm (Búa)</strong><br>
+           • Không thể đi vào ô có quân cùng loại hoặc cùng phe.</p>
+
+        <h4 style="color: #60a5fa; margin: 16px 0 6px;">2. Quy tắc Di Chuyển:</h4>
+        <p>• Mỗi lượt đi đúng <strong>1 ô</strong> theo <strong>8 hướng</strong> (Tiến, lùi, trái, phải, và 4 đường chéo).</p>
+
+        <h4 style="color: #60a5fa; margin: 16px 0 6px;">3. Điều Kiện Chiến Thắng:</h4>
+        <p>• 🚩 <strong>Chiếm Căn Cứ</strong>: Đưa bất kỳ 1 quân nào vào căn cứ đối phương (Đỏ chiếm <code>i9</code>, Xanh chiếm <code>a1</code>).<br>
+           • ⚔️ <strong>Diệt Sạch</strong>: Bắt hết 9 quân của đối phương.<br>
+           • 🚫 <strong>Khóa nước</strong>: Đối phương không còn nước đi hợp lệ.<br>
+           • ⏱️ Đối phương hết thời gian lượt hoặc đầu hàng.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container Toast thông báo -->
+  <div id="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>OTTv2 Multiplayer © 2026 • Serverless Real-Time (playhtml Cloud & CRDT)</p>
+  </footer>
+
+  <!-- 4. SCRIPTS LIÊN KẾT -->
+  <!-- Shared Rules (Tương thích cả Client và Server) -->
+  <script src="../shared/gameRules.js"></script>
+  <script src="shared/gameRules.js"></script>
+
+  <!-- Core Modules -->
+  <script src="js/core/constants.js?v=2.3"></script>
+  <script src="js/core/piece.js?v=2.3"></script>
+  <script src="js/core/board.js?v=2.3"></script>
+  <script src="js/core/rules.js?v=2.3"></script>
+
+  <!-- UI & Sound Modules -->
+  <script src="js/ui/soundManager.js?v=2.3"></script>
+  <script src="js/ui/boardRenderer.js?v=2.3"></script>
+  <script src="js/ui/controls.js?v=2.3"></script>
+
+  <!-- playhtml Core (playhtml.fun Serverless Real-Time Cloud) -->
+  <script type="module">
+    try {
+      import { playhtml } from "https://unpkg.com/playhtml@latest";
+      window.playhtml = playhtml;
+      if (typeof window.onPlayhtmlLoaded === 'function') {
+        window.onPlayhtmlLoaded(playhtml);
+      }
+      window.dispatchEvent(new CustomEvent('playhtml:ready', { detail: playhtml }));
+      console.log('✅ playhtml.fun Cloud Real-Time Module Loaded!');
+    } catch (e) {
+      console.warn('⚠️ playhtml module load warning (falling back to P2P adapter):', e);
+    }
+  </script>
+
+  <!-- Network Modules (Serverless Real-Time Engine) -->
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/network/playhtmlAdapter.js?v=2.3"></script>
+  <script src="js/network/playfullAdapter.js?v=2.3"></script>
+
+  <!-- Main Controller -->
+  <script src="js/main.js?v=2.3"></script>
+
+</body>
+</html>

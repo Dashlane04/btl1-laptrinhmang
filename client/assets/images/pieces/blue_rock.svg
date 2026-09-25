@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueRockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1e3a8a" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <circle cx="50" cy="50" r="44" fill="url(#blueRockGrad)" stroke="#93c5fd" stroke-width="3" filter="url(#shadow)" />
+  <!-- Fist (Rock) Icon -->
+  <g fill="#ffffff" transform="translate(24, 22) scale(0.52)">
+    <path d="M50 8 C40 8 32 16 32 26 L32 40 C30 40 28 42 28 45 C28 48 30 50 32 50 L32 54 C30 54 28 56 28 59 C28 62 30 64 32 64 L32 68 C30 68 28 70 28 73 C28 77 31 80 35 80 L65 80 C74 80 82 72 82 63 L82 45 C82 32 70 25 58 25 L58 16 C58 11.5 54.5 8 50 8 Z" />
+    <path d="M22 46 C18 46 15 49 15 53 C15 57 18 60 22 60 L28 60 L28 46 Z" opacity="0.9" />
+  </g>
+  <text x="50" y="86" font-family="'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">ĐẤM</text>
+</svg>
