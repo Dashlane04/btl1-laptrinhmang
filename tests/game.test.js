@@ -1,8 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { io: connect } = require('socket.io-client');
 const rules = require('../shared/gameRules');
 const { createGameServer } = require('../server/server');
+
+test('static build uses the current version for multiplayer assets', () => {
+  const version = require('../package.json').version;
+  const html = fs.readFileSync(path.join(__dirname, '../client/index.html'), 'utf8');
+  for (const asset of ['shared/gameRules.js', 'js/network/playhtmlAdapter.js', 'js/main.js']) {
+    assert.ok(html.includes(`${asset}?v=${version}`), `${asset} cache key is stale`);
+  }
+});
 
 function once(socket, event) {
   return new Promise((resolve, reject) => {

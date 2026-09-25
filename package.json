@@ -1,6 +1,6 @@
 {
   "name": "otttv2-multiplayer",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Trò chơi OTTv2 9x9 multiplayer qua Socket.IO hoặc PlayHTML",
   "main": "server/server.js",
   "scripts": {

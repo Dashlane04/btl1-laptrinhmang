@@ -75,10 +75,10 @@ class PlayhtmlAdapter {
     try {
       await Promise.race([
         PlayhtmlAdapter.initGlobalLobby(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('PlayHTML connection timeout')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('PlayHTML connection timeout')), 15000))
       ]);
       const playhtml = window.playhtml;
-      if (!playhtml?.createPageData) return;
+      if (!playhtml?.createPageData) throw new Error('PlayHTML chưa được tải.');
 
       this.playhtmlReady = true;
       this.stateChannel = playhtml.createPageData(`match-${this.roomId}`, null);
@@ -88,8 +88,11 @@ class PlayhtmlAdapter {
         onEvent: ({ eventPayload }) => this._handleAction(eventPayload)
       });
     } catch (error) {
-      console.warn('PlayHTML unavailable; same-browser fallback only.', error);
       this.playhtmlReady = false;
+      if (location.hostname.endsWith('github.io')) {
+        throw new Error('Không thể kết nối PlayHTML Cloud. Vui lòng tải lại trang và thử lại.');
+      }
+      console.warn('PlayHTML unavailable; same-browser fallback only.', error);
     }
   }
 
