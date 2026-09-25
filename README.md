@@ -169,7 +169,14 @@ URL: **https://dashlane04.github.io/btl1-laptrinhmang/**
 
 ## 5. Phân công nhóm
 
-Xem [`docs/group-report.md`](docs/group-report.md).
+| Thành viên | Phụ trách |
+|---|---|
+| **Nguyễn Văn Tiến** | Luật chơi `shared/gameRules.js`, unit test |
+| **Nguyễn Tấn Khôi** | Mô hình state & replay `client/js/core/match.js`, bot AI |
+| **Đoàn Việt Đức** | Tầng mạng playhtml `client/js/net/net.js`, sảnh chờ, chế độ 2 vs 2 |
+| **Trần Tuấn Đạt** | Giao diện `client/index.html` + CSS + `ui/board.js`, sáng/tối, E2E test |
+
+Chi tiết quá trình làm và các vấn đề kỹ thuật đã xử lý: [`docs/group-report.md`](docs/group-report.md).
 
 ## 6. Giấy phép
 

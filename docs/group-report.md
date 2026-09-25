@@ -5,7 +5,7 @@
   (2) Dùng thư viện playhtml để có server, nhiều người chơi cùng lúc.
 * **Sản phẩm:** web tĩnh trên GitHub Pages + đồng bộ thời gian thực qua playhtml.
 
-> Điền tên và mã sinh viên vào bảng bên dưới trước khi nộp.
+> Cột MSSV để trống, các thành viên tự điền trước khi nộp.
 
 ---
 
@@ -13,10 +13,10 @@
 
 | STT | Họ và tên | MSSV | Phụ trách |
 |:--:|---|---|---|
-| 1 | | | Luật chơi (`shared/gameRules.js`), unit test |
-| 2 | | | Mô hình state & replay (`client/js/core/match.js`), bot AI |
-| 3 | | | Tầng mạng playhtml (`client/js/net/net.js`), sảnh chờ, chế độ 2 vs 2 |
-| 4 | | | Giao diện (`client/index.html`, CSS, `ui/board.js`), sáng/tối, E2E test |
+| 1 | Nguyễn Văn Tiến | | Luật chơi (`shared/gameRules.js`), unit test |
+| 2 | Nguyễn Tấn Khôi | | Mô hình state & replay (`client/js/core/match.js`), bot AI |
+| 3 | Đoàn Việt Đức | | Tầng mạng playhtml (`client/js/net/net.js`), sảnh chờ, chế độ 2 vs 2 |
+| 4 | Trần Tuấn Đạt | | Giao diện (`client/index.html`, CSS, `ui/board.js`), sáng/tối, E2E test |
 
 ---
 
