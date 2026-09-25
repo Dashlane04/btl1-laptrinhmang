@@ -1,33 +1,17 @@
 {
-  "name": "otttv2-multiplayer",
-  "version": "2.1.0",
-  "description": "Trò chơi cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer Real-time trên nền Web (Serverless với playhtml Cloud & CRDT)",
-  "main": "server/server.js",
+  "name": "ottv2-web",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Cờ Oẳn Tù Tì v2 (OTTv2) 9x9 — web tĩnh, nhiều người chơi thời gian thực bằng playhtml",
   "scripts": {
-    "start": "node server/server.js",
-    "server": "node server/server.js",
-    "dev": "node server/server.js",
-    "client": "npx serve client -p 5000",
-    "test": "node -e \"console.log('Running rules verification...'); const r = require('./shared/gameRules'); console.log('Rules loaded successfully. Board size:', r.BOARD_SIZE, 'Pieces per side:', 9); process.exit(0);\""
+    "test": "npm run test:unit",
+    "test:unit": "node tests/run-unit.js",
+    "test:e2e": "node tests/e2e/run-e2e.js",
+    "test:all": "npm run test:unit && npm run test:e2e"
   },
-  "keywords": [
-    "rock-paper-scissors",
-    "oan-tu-ti",
-    "ottv2",
-    "chess",
-    "playhtml",
-    "serverless",
-    "partykit",
-    "crdt",
-    "realtime",
-    "multiplayer",
-    "btl-web"
-  ],
-  "author": "BTL Web Team",
+  "keywords": ["oan-tu-ti", "ottv2", "playhtml", "partykit", "crdt", "realtime", "boardgame"],
   "license": "MIT",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+  "devDependencies": {
+    "playwright": "^1.63.0"
   }
 }

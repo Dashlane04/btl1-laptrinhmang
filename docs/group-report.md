@@ -1,54 +1,130 @@
-# 📑 BÁO CÁO PHÂN CÔNG CÔNG VIỆC NHÓM (GROUP REPORT)
-## Dự Án: Trò Chơi Cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer
+# Báo cáo bài tập nhóm — OTTv2
 
-* **Học phần**: Lập trình Web / Web Application Development
-* **Đề tài**: Xây dựng Game OTTv2 Đối Kháng Thời Gian Thực Trên Web
-* **Số lượng thành viên**: 4 thành viên
+* **Học phần:** Lập trình mạng / Lập trình Web
+* **Đề bài:** (1) Trang web cho 2 người chơi Oẳn Tù Tì v2 trên bàn 9×9.
+  (2) Dùng thư viện playhtml để có server, nhiều người chơi cùng lúc.
+* **Sản phẩm:** web tĩnh trên GitHub Pages + đồng bộ thời gian thực qua playhtml.
 
----
-
-## 1. Bảng Phân Công Công Việc & Tỷ Lệ Đóng Góp
-
-| STT | Họ và Tên | Mã Sinh Viên | Vai Trò | Nhiệm Vụ Chi Tiết Được Giao | Tỷ Lệ Đóng Góp |
-|:---:|:---|:---:|:---|:---|:---:|
-| 1 | **Nguyễn Văn A** *(Trưởng nhóm)* | 20210001 | Frontend Lead & UI/UX | - Thiết kế kiến trúc giao diện SPA (Single Page Application).<br>- Xây dựng layout CSS Dark Theme Gaming, Glassmorphism.<br>- Vẽ và thiết kế bộ nhận diện quân cờ Vector SVG (Đấm, Lá, Kéo).<br>- Tối ưu hóa giao diện tương thích đa thiết bị (Responsive Mobile/Desktop). | 100% |
-| 2 | **Trần Thị B** | 20210002 | Client Logic & Interaction | - Xây dựng hệ thống điều khiển chọn quân, di chuyển (Click/Drag & Drop).<br>- Lập trình Renderer vẽ bàn cờ $9 \times 9$, hiệu ứng highlight 8 hướng.<br>- Xây dựng Module âm thanh thời gian thực bằng Web Audio API.<br>- Phát triển thuật toán Bot AI cho chế độ đấu đơn (Single Player). | 100% |
-| 3 | **Lê Hoàng C** | 20210003 | Backend & Socket.io | - Xây dựng kiến trúc máy chủ Node.js / Express.<br>- Thiết kế hệ thống quản lý phòng chơi In-Memory không cần Database.<br>- Lập trình bộ điều phối Socket.io xử lý Matchmaking, Chatbox.<br>- Quản lý đồng hồ đếm ngược lượt đi (Turn Timer) và ngắt kết nối. | 100% |
-| 4 | **Phạm Minh D** | 20210004 | Game Core & QA Lead | - Xây dựng thư viện luật chơi OTTv2 dùng chung (`shared/gameRules.js`).<br>- Lập trình RuleEngine kiểm tra hợp lệ 8 hướng và chống gian lận trên Server.<br>- Viết đặc tả API, tài liệu hướng dẫn luật chơi và báo cáo nhóm.<br>- Kiểm thử toàn diện (Unit Test, Multiplayer Stress Test) và thiết lập CI/CD. | 100% |
+> Điền tên và mã sinh viên vào bảng bên dưới trước khi nộp.
 
 ---
 
-## 2. Kế Hoạch & Tiến Độ Thực Hiện
+## 1. Phân công
 
-```mermaid
-gantt
-    title Tiến Độ Dự Án OTTv2 Multiplayer
-    dateFormat  YYYY-MM-DD
-    section Giai đoạn 1: Thiết kế & Nghiên cứu
-    Khảo sát yêu cầu & luật chơi OTTv2      :done,    des1, 2026-09-01, 2026-09-04
-    Thiết kế kiến trúc hệ thống & UI Mockup :done,    des2, 2026-09-05, 2026-09-08
-    section Giai đoạn 2: Phát triển Core & Frontend
-    Xây dựng Core RuleEngine & Board 9x9    :done,    dev1, 2026-09-09, 2026-09-14
-    Hoàn thiện UI bàn cờ & hiệu ứng         :done,    dev2, 2026-09-12, 2026-09-17
-    section Giai đoạn 3: Backend & Multiplayer
-    Xây dựng Server Socket.io & Room Manager:done,    dev3, 2026-09-15, 2026-09-19
-    Tích hợp Client - Server qua WebSocket  :done,    dev4, 2026-09-18, 2026-09-20
-    section Giai đoạn 4: Kiểm thử & Đóng gói
-    Kiểm thử đa nền tảng & Tối ưu hoá       :done,    qa1,  2026-09-20, 2026-09-21
-    Viết tài liệu báo cáo & Đóng gói GitHub :done,    qa2,  2026-09-21, 2026-09-22
-```
+| STT | Họ và tên | MSSV | Phụ trách |
+|:--:|---|---|---|
+| 1 | | | Luật chơi (`shared/gameRules.js`), unit test |
+| 2 | | | Mô hình state & replay (`client/js/core/match.js`), bot AI |
+| 3 | | | Tầng mạng playhtml (`client/js/net/net.js`), sảnh chờ, chế độ 2 vs 2 |
+| 4 | | | Giao diện (`client/index.html`, CSS, `ui/board.js`), sáng/tối, E2E test |
 
 ---
 
-## 3. Đánh Giá Kết Quả Đạt Được
+## 2. Đối chiếu yêu cầu đề bài
 
-### 3.1. Về mặt Tính Năng
-* Hoàn thiện 100% luật chơi OTTv2 mở rộng trên bàn cờ $9 \times 9$, kiểm tra chính xác điều kiện ăn quân và chiếm cứ điểm.
-* Hỗ trợ đầy đủ các chế độ chơi: Chơi Online nhiều người, Chơi Offline 2 người trên cùng một thiết bị, và Chơi Đấu với Máy (AI).
-* Đồng bộ thời gian thực mượt mà qua Socket.io, độ trễ thấp (<15ms trên mạng nội bộ).
-* Không phụ thuộc vào cơ sở dữ liệu bên ngoài, dễ dàng triển khai ở bất kỳ đâu chỉ với một lệnh chạy.
+| Yêu cầu | Thực hiện ở |
+|---|---|
+| Bàn cờ 9×9 | `shared/gameRules.js` → `BOARD_SIZE`, `createInitialBoard()` |
+| Đấm / Lá / Kéo là quân cờ | `PIECE_TYPES`, mỗi bên 3 quân mỗi loại |
+| Đi 1 ô theo 8 hướng như quân Vua | `DIRECTIONS`, `getValidMoves()` |
+| Đấm ăn Kéo, Kéo ăn Lá, Lá ăn Đấm | `BEATS`, `canCapture()` |
+| Cùng loại không ăn nhau, chỉ chặn đường | `getValidMoves()` — ô có quân địch cùng loại không được đưa vào danh sách nước đi |
+| **Thắng khi ăn hết sạch một LOẠI quân** | `findEliminatedTypes()`, `checkGameOver()` → `TYPE_ELIMINATED` |
+| **Thắng khi đưa quân vào `a1` / `i9` đối phương** | `checkGameOver()` → `BASE_INVADED` |
+| Trang web cho 2 người chơi | `client/index.html` + `client/js/main.js` |
+| **Dùng playhtml để có server, nhiều người cùng lúc** | `client/js/net/net.js` — `playhtml.init()` + `createPageData()`; nhiều phòng song song, khán giả, giải 2 vs 2 |
 
-### 3.2. Về mặt Kỹ Thuật
-* **Clean Architecture**: Tách biệt rõ ràng giữa Core Game Engine, UI Presentation, và Network Communication.
-* **Shared Logic**: Tái sử dụng module luật chơi giữa Client (để render gợi ý nước đi nhanh) và Server (để xác thực độc lập chống can thiệp client).
-* **Zero Asset Dependency**: Sử dụng 100% SVG và Web Audio API tổng hợp âm thanh tại chỗ, đảm bảo không gặp lỗi thiếu tài nguyên hình ảnh hay âm thanh khi deploy.
+---
+
+## 3. Kiến trúc và lý do chọn
+
+### 3.1. Vai trò từng thành phần
+
+| Thành phần | Vai trò |
+|---|---|
+| GitHub Pages | Host *website* (file tĩnh). Không chạy code, không giữ state. |
+| **playhtml** (`api.playhtml.fun`) | Phần *server*: đồng bộ thời gian thực + lưu bền state bằng PartyKit và Yjs CRDT. Đây là host công cộng mặc định của thư viện, nhóm không phải deploy backend. |
+| Browser của người chơi | Chạy luật chơi và dựng giao diện. |
+
+Không có Node.js server trong sản phẩm. Đề bài yêu cầu "dùng playhtml để cho phép có
+server", và playhtml chính là thứ cung cấp server đó.
+
+### 3.2. Quyết định thiết kế quan trọng: state chỉ lưu nước đi
+
+State chia sẻ của một trận **không lưu bàn cờ**, chỉ lưu **danh sách nước đi**. Bàn cờ
+được suy ra bằng replay từ vị trí khởi đầu (`match.js` → `derive()`).
+
+Lý do: nếu đồng bộ cả bàn cờ thì hai máy ghi đồng thời sẽ ghi đè lẫn nhau, làm mất nước
+đi và hai bên thấy bàn cờ khác nhau. Với danh sách nước đi:
+
+* Cùng danh sách ⇒ cùng bàn cờ. Hai máy không thể lệch.
+* Nước đi sắp theo `seq`; tranh chấp cùng `seq` phân giải theo `(at, id)` nên tất định
+  trên mọi máy, không phụ thuộc thứ tự gói tin.
+* Nước đi phi luật bị loại lúc replay ⇒ chống gian lận mà không cần server kiểm tra.
+* Điểm số suy ra từ bảng kết quả từng ván ⇒ không thể cộng đôi.
+
+Ghế Đỏ / Xanh và vị trí trong giải 2 vs 2 cũng theo nguyên tắc tương tự: mỗi người chỉ
+ghi khoá `claims` của chính mình, ghế được suy ra bằng cách sắp xếp ⇒ không có ghi tranh
+chấp, không xảy ra cảnh hai người cùng nhận một phe.
+
+### 3.3. Ba vấn đề kỹ thuật đã gặp và cách xử lý
+
+1. **playhtml không nạp được qua unpkg.** Bản dựng của playhtml có `import` bare
+   specifier bên trong; unpkg không resolve được nên module không chạy. Phải nạp qua CDN
+   có bundle sẵn dependency: `https://cdn.jsdelivr.net/npm/playhtml@2.14.1/+esm`.
+   Ngoài ra câu `import` phải ở top-level của module — bọc trong `try { }` là lỗi cú pháp
+   nên toàn bộ module bị bỏ mà không báo gì.
+
+2. **playhtml không hoạt động trên `localhost`.** Thư viện đặt tên room theo
+   `window.location.hostname`; với `127.0.0.1:5500` thì tên room chứa dấu `:` làm vỡ
+   đường dẫn PartyKit, provider không phát event `sync`, và `playhtml.init()` treo vĩnh
+   viễn vì nó `await` sync không có timeout. Vì vậy phải chạy trên tên miền thật
+   (GitHub Pages). App có timeout và báo lỗi rõ ràng thay vì treo im lặng.
+
+3. **Default của `createPageData` có thể xoá dữ liệu.** Nếu hai người mở cùng một phòng
+   mới trong cùng khoảng round-trip đồng bộ, cả hai đều thấy kênh rỗng và cùng ghi giá trị
+   default; bên ghi sau xoá sạch nước đi bên kia vừa tạo. Cách xử lý: default chỉ chứa
+   metadata vô hại, các container (`moves`, `claims`, `results`, `chat`) được tạo lúc dùng
+   tới qua `initFields()` / `ensure()` và không bao giờ ghi đè khoá đã có.
+
+Ngoài ra, draft proxy của playhtml không hỗ trợ toán tử `delete`, và không cho đọc lại
+object vừa gán trong cùng một lần `update()` — hai điểm này đều được xử lý trong
+`net.js`.
+
+---
+
+## 4. Kiểm thử
+
+| Loại | Số lượng | Thời gian | Lệnh |
+|---|---|---|---|
+| Unit test (luật chơi + mô hình state) | 94 | ~25 ms | `npm run test:unit` |
+| E2E trên browser thật (Playwright) | 68 | ~35 s | `npm run test:e2e` |
+
+Unit test chạy thuần Node, không cần cài dependency, và được dùng làm cổng chặn trong
+GitHub Actions trước khi deploy.
+
+E2E mở nhiều browser context thật và kiểm chứng:
+
+* A đi quân thì B thấy ngay; toàn bộ 81 ô của hai máy khớp nhau; lịch sử nước đi giống nhau.
+* Phe Xanh thấy bàn cờ quay 180°.
+* Thắng do ăn hết sạch một loại quân — hai máy báo kết quả nhất quán, điểm 1–0.
+* Nước đi phi luật bơm qua mạng bị loại, không ai thắng được bằng nó.
+* Nhiều phòng song song, state tách biệt.
+* Giải 2 vs 2: 4 vị trí, hai bàn độc lập, điểm đội đúng.
+* Khán giả không chiếm ghế và không đi được quân.
+* Chế độ sáng / tối, ghi nhớ lựa chọn sau khi tải lại.
+
+E2E không dùng localhost: nó chặn request cho một hostname `https` giả và phục vụ file
+từ đĩa, mô phỏng đúng môi trường GitHub Pages. Có thể trỏ vào URL đã deploy bằng
+`OTT_URL=... npm run test:e2e`.
+
+---
+
+## 5. Hạn chế đã biết
+
+* Tất cả phòng dùng chung một room playhtml (`ottv2-hub-v3`), nên mọi client nhận dữ
+  liệu của mọi phòng. Đủ dùng ở quy mô lớp học; quy mô lớn hơn nên tách room theo mã phòng.
+* Không có xác thực người dùng: danh tính chỉ là một id lưu trong `localStorage`.
+* Thời gian mỗi lượt tính theo đồng hồ của máy đi nước cuối; có khoảng bù 3 giây để
+  giảm ảnh hưởng của lệch đồng hồ, nhưng không phải đồng hồ tuyệt đối.
+* Bot AI chỉ đánh giá một tầng, không phải đối thủ mạnh.

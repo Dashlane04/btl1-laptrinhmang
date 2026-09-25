@@ -1,170 +1,176 @@
-# 🎮 OTTv2 Multiplayer - Cờ Oẳn Tù Tì 9x9 Thời Gian Thực
+# OTTv2 — Cờ Oẳn Tù Tì trên bàn 9×9
 
-<div align="center">
-
-[![Live Demo](https://img.shields.io/badge/🌐_Trải_Nghiệm_Trực_Tuyến-GitHub_Pages-22c55e?style=for-the-badge&logo=githubpages&logoColor=white)](https://thing-or-think.github.io/BT1-WEB/)
-[![Real-Time](https://img.shields.io/badge/⚡_Real--Time-playhtml.fun_PartyKit-38bdf8?style=for-the-badge&logo=cloudflare&logoColor=white)](https://playhtml.fun)
-[![Node.js](https://img.shields.io/badge/Node.js-18.x+-68a063?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/License-MIT-amber?style=for-the-badge)](LICENSE)
-
-### 🔗 **Trải Nghiệm Game Trực Tiếp Tại**:  
-👉 **[https://thing-or-think.github.io/BT1-WEB/](https://thing-or-think.github.io/BT1-WEB/)** 👈
-
-</div>
+Web game cờ chiến thuật, hai người chơi thời gian thực trên hai máy khác nhau.
+Trang web là **web tĩnh** (GitHub Pages), phần đồng bộ nhiều người do thư viện
+[**playhtml**](https://playhtml.fun) đảm nhiệm. **Không cần tự viết hay chạy server.**
 
 ---
 
-## 📌 Giới Thiệu Dự Án
+## 1. Luật chơi
 
-**OTTv2 Multiplayer** là sản phẩm Bài tập lớn môn **Lập trình Web (Web Application Development)**. Trò chơi kết hợp giữa trò chơi dân gian **Oẳn Tù Tì (Kéo - Búa - Bao)** truyền thống với lối đánh chiến thuật theo lượt trên bàn cờ $9 \times 9$, hỗ trợ đối kháng thời gian thực đa người chơi trên nền tảng Web.
+**Bàn cờ.** Lưới 9×9. Mỗi bên 9 quân: 3 **Đấm** (Đ, hình tròn), 3 **Lá** (L, hình vuông),
+3 **Kéo** (K, hình tam giác). Căn cứ phe Đỏ là ô `a1`, căn cứ phe Xanh là ô `i9`.
 
-* 🌐 **Chơi Trực Tuyến Không Cần Cài Đặt**: Chạy trực tiếp trên trình duyệt qua **[GitHub Pages](https://thing-or-think.github.io/BT1-WEB/)**.
-* ⚡ **Công Nghệ Serverless Real-Time**: Đồng bộ phòng chơi toàn cầu qua **`playhtml.fun` (PartyKit & Yjs CRDT)** kết hợp **WebRTC DataChannel (PeerJS)**.
-* 🖥️ **Hỗ Trợ Chạy Local / LAN**: Tích hợp sẵn máy chủ Node.js Express REST API & In-Memory Room Controller.
+**Di chuyển.** Mỗi lượt đi **một quân, đúng một ô**, theo **8 hướng** như quân Vua
+trong cờ vua. Không đi vào ô có quân cùng phe.
 
----
+**Ăn quân.** Đấm ăn Kéo · Kéo ăn Lá · Lá ăn Đấm.
+Hai quân **cùng loại không ăn nhau, chỉ đứng chặn đường nhau**.
+Quân cũng không được đi vào ô có quân địch đang khắc chế mình.
 
-## 🌟 Tính Năng Nổi Bật
+**Điều kiện thắng.**
 
-### 1. ⚔️ Luật Chơi OTTv2 Chiến Thuật (Bàn Cờ $9 \times 9$)
-* **2 Phe Đối Đầu**: Phe Đỏ (**Red** - Căn cứ `a1`) và Phe Xanh (**Blue** - Căn cứ `i9`).
-* **9 Quân Cờ Mỗi Bên**: 3 Đấm (Búa), 3 Lá (Bao), 3 Kéo.
-* **Quy Tắc Di Chuyển**: Mỗi lượt đi 1 ô theo **8 hướng** xung quanh (ngang, dọc, chéo).
-* **Quy Tắc Khắc Chế**: ✊ **Đấm > ✌️ Kéo > 🖐️ Lá > ✊ Đấm**.
-* **Đa Dạng Điều Kiện Thắng**:
-  * 🚩 **Chiếm Căn Cứ**: Đưa bất kỳ 1 quân cờ nào vào căn cứ đối phương (`i9` với Đỏ, `a1` với Xanh).
-  * ⚔️ **Diệt Sạch Quân**: Bắt toàn bộ 9 quân cờ của đối thủ.
-  * 🚫 **Khóa Nước Đi**: Khi đối thủ không còn nước đi hợp lệ.
-  * ⏱️ Đối thủ hết thời gian suy nghĩ lượt hoặc đầu hàng.
+| Điều kiện | Ghi chú |
+|---|---|
+| **Ăn hết sạch một LOẠI quân của đối phương** | Ăn hết cả 3 quân Kéo là thắng ngay, dù đối phương còn nhiều quân khác |
+| **Đưa một quân vào căn cứ đối phương** (`a1` / `i9`) | Thắng tức thì |
+| Đối phương hết nước đi hợp lệ | luật mở rộng |
+| Đối phương hết thời gian lượt, hoặc đầu hàng | luật mở rộng |
 
-### 2. 🕹️ Các Chế Độ Chơi Đa Dạng
-* 🌐 **Online Multiplayer (playhtml Serverless)**:
-  * Tạo phòng chơi trực tuyến, tự động sinh mã phòng 6 ký tự và đường link mời bạn bè.
-  * **Sảnh Chờ Trực Tiếp (Live Room Hub)**: Danh sách phòng được đồng bộ toàn cầu qua PartyKit Cloud theo thời gian thực; hiển thị trạng thái trận đấu, tỉ số, số nước đi, và đồng hồ đếm giờ trực tiếp.
-  * **Chế Độ Khán Giả (Spectator)**: Cho phép người chơi khác vào xem trực tiếp các trận đấu đang diễn ra.
-* 👥 **Chơi 2 Người Trên Cùng Máy (Pass & Play)**: Chơi đối kháng trực tiếp trên cùng một thiết bị mà không cần kết nối mạng.
-* 🤖 **Đấu Với Máy (Vs AI Bot)**: Thuật toán Bot AI đánh giá thế cờ và tìm nước đi tối ưu để luyện tập kỹ năng.
+> Vì mất sạch một loại quân là thua ngay, giao diện hiển thị **số quân còn lại theo
+> từng loại** cho cả hai bên, và tô đỏ cảnh báo khi một loại chỉ còn 1 quân.
 
-### 3. 🎨 Giao Diện & Trải Nghiệm Người Dùng (UI/UX)
-* Phong cách **Dark Gaming / Cyberpunk** hiện đại kết hợp hiệu ứng Glassmorphism.
-* Hiển thị gợi ý nước đi trực quan: chấm xanh cho ô đi được, vòng đỏ phát sáng cho ô có thể bắt quân địch.
-* Hệ thống âm thanh sống động được tạo tại chỗ bằng **Web Audio API** (không lo thiếu file âm thanh).
-* Khung chat, emoji và bảng ghi nhận lịch sử nước đi trực quan theo chuẩn ký hiệu cờ (`e5 ➔ e6`).
+Chi tiết đầy đủ: [`docs/rules-ottv2.md`](docs/rules-ottv2.md).
 
 ---
 
-## 🏗️ Kiến Trúc Hệ Thống
+## 2. Các chế độ chơi
+
+| Chế độ | Mô tả |
+|---|---|
+| **1 vs 1 online** | Tạo phòng, gửi link mời. Hai người ở hai máy bất kỳ, đồng bộ qua playhtml. |
+| **Giải đấu 2 vs 2** | Hai đội, mỗi đội 2 người. Bàn 1: A1 (Đỏ) vs B1 (Xanh). Bàn 2: B2 (Đỏ) vs A2 (Xanh). Hai bàn đánh song song, tổng hợp điểm đội. |
+| **Khán giả** | Người thứ 3 trở đi vào phòng sẽ tự thành khán giả: xem được bàn cờ và lịch sử, không đi được quân. |
+| **Luyện tập với máy** | Chơi ngoại tuyến với bot. |
+| **Hai người cùng máy** | Luân phiên đi trên cùng thiết bị, không cần mạng. |
+
+Ngoài ra: sảnh chờ hiển thị các phòng đang mở theo thời gian thực, chat trong phòng,
+lịch sử nước đi, đồng hồ mỗi lượt, đấu lại nhiều ván, và **chế độ sáng / tối**.
+
+---
+
+## 3. Kiến trúc
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│               HẠ TẦNG CLOUD PARTYKIT (playhtml.partykit.dev)            │
-│                 Đồng bộ Sảnh chờ (Lobby) & Phòng chơi (CRDT)           │
-└────────────────────────────────────────────────────────────────────────┘
-                 ▲                                        ▲
-                 │ (WebSocket CRDT)                       │ (WebSocket CRDT)
-                 ▼                                        ▼
-┌──────────────────────────────────┐    ┌──────────────────────────────────┐
-│             MÁY A                │    │             MÁY B                │
-│ • Sảnh chờ:                      │    │ • Sảnh chờ:                      │
-│   room: "ottv2-global-lobby"     │    │   room: "ottv2-global-lobby"     │
-│   -> Host tạo phòng ott-xxxx     │    │   -> Tự động nhận phòng của A    │
-│ • Trận đấu P2P (WebRTC):         │<──>│ • Trận đấu P2P (WebRTC):         │
-│   Peer ID: ottv2_match_xxxx      │    │   Kết nối trực tiếp tốc độ cao   │
-└──────────────────────────────────┘    └──────────────────────────────────┘
+        GitHub Pages  (chỉ phát file tĩnh: HTML / CSS / JS)
+                 |
+      +----------+----------+
+      |                     |
+   Máy A                 Máy B          ... và các máy khác
+      |                     |
+      +----------+----------+
+                 |
+        api.playhtml.fun   (PartyKit + Yjs CRDT)
+        = phần "server": đồng bộ thời gian thực + lưu bền state
 ```
 
----
+Hai vai trò khác nhau, đừng lẫn:
 
-## 📁 Cấu Trúc Thư Mục Dự Án
+* **GitHub Pages** host *website*.
+* **playhtml** cung cấp *backend đồng bộ*. Đây là host PartyKit công cộng, mặc định
+  của `playhtml.init()`; nhóm không phải deploy gì thêm.
+
+### State được thiết kế để hai máy không thể lệch nhau
+
+State chia sẻ của một trận **chỉ lưu danh sách nước đi**, không lưu bàn cờ. Bàn cờ
+luôn được *suy ra* bằng cách replay từ vị trí khởi đầu
+([`client/js/core/match.js`](client/js/core/match.js) → `derive()`).
+
+Hệ quả:
+
+* Cùng danh sách nước đi ⇒ cùng bàn cờ. Hai máy **không thể** lệch bàn cờ.
+* Nước đi được sắp theo `seq`, tranh chấp cùng `seq` phân giải theo `(at, id)` ⇒
+  tất định trên mọi máy, không phụ thuộc thứ tự gói tin đến.
+* Nước đi **phi luật bị loại khi replay**, nên client bị sửa code cũng không đi được
+  nước sai luật hay tự cho mình thắng.
+* Điểm số suy ra từ bảng kết quả từng ván ⇒ không thể cộng đôi.
+* Ghế Đỏ / Xanh cũng **suy ra** từ bảng `claims`, trong đó mỗi người chỉ ghi khoá của
+  chính mình ⇒ không có ghi tranh chấp, không xảy ra cảnh hai người cùng nhận phe Đỏ.
+
+### Cấu trúc thư mục
 
 ```
-BTL-WEB/
-│
-├── client/                       # Frontend Web UI (Chạy tĩnh trên GitHub Pages)
-│   ├── index.html                # Giao diện chính SPA (Sảnh chờ & Đấu trường)
-│   ├── assets/
-│   │   └── images/pieces/        # Bộ nhận diện 6 Vector SVG quân cờ sắc nét
-│   ├── css/
-│   │   ├── style.css             # Theme Dark Gaming, responsive đa màn hình
-│   │   ├── board.css             # CSS ma trận bàn cờ 9x9, căn cứ, hiệu ứng
-│   │   └── lobby.css             # CSS sảnh chờ, thẻ phòng trực tiếp, stats bar
-│   └── js/
-│       ├── core/                 # Board, Piece, Rules, Constants
-│       ├── ui/                   # BoardRenderer, BoardControls, SoundManager
-│       ├── network/              # PlayhtmlAdapter (Serverless P2P / PartyKit Cloud)
-│       └── main.js               # Controller điều phối ứng dụng
-│
-├── server/                       # Backend Server Node.js (Tuỳ chọn cho Local/LAN)
-│   ├── config/server.config.js   # Cấu hình PORT, CORS
-│   ├── controllers/              # RoomController, GameController
-│   ├── core/                     # Logic thẩm định nước đi phía server
-│   ├── models/Room.js            # Model phòng chơi In-Memory
-│   ├── sockets/handler.js        # Socket.io Event Dispatcher
-│   └── server.js                 # Entry point máy chủ Express & REST API
-│
-├── shared/                       # Thư viện luật chơi dùng chung Client & Server
-│   └── gameRules.js              # Định nghĩa bàn cờ, 8 hướng, ma trận khắc chế
-│
-├── docs/                         # Tài liệu báo cáo & đặc tả
-│   ├── rules-ottv2.md            # Chi tiết luật chơi OTTv2 mở rộng
-│   ├── api-specs.md              # Đặc tả giao thức Socket.io & REST API
-│   └── group-report.md           # Báo cáo phân công công việc nhóm
-│
-├── index.html                    # Root redirect về /client
-├── README.md                     # Tài liệu hướng dẫn sử dụng
-└── package.json                  # Cấu hình dự án & scripts
+shared/gameRules.js        Luật chơi — NGUỒN SỰ THẬT DUY NHẤT (chạy cả Node và browser)
+client/
+  index.html               Toàn bộ giao diện (SPA một trang)
+  css/app.css              Design tokens + layout, hỗ trợ sáng/tối
+  css/board.css            Bàn cờ 9x9
+  js/core/match.js         Mô hình state trận đấu + replay tất định
+  js/core/ai.js            Bot cho chế độ luyện tập
+  js/net/net.js            Bọc playhtml: kết nối, kênh dữ liệu, sảnh chờ
+  js/ui/board.js           Dựng bàn cờ, xoay bàn theo phe, xử lý chọn/đi quân
+  js/ui/theme.js           Chế độ sáng/tối
+  js/ui/sound.js           Âm thanh tổng hợp bằng Web Audio API
+  js/main.js               Điều phối ứng dụng
+tests/
+  unit/                    Test luật chơi & mô hình state (Node thuần, không cần cài gì)
+  e2e/run-e2e.js           Test browser thật bằng Playwright
+docs/rules-ottv2.md        Đặc tả luật chơi
+index.html                 Chuyển hướng vào client/
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt & Chạy Ứng Dụng
+## 4. Chạy và kiểm thử
 
-### Cách 1: Chơi Ngay Trên Web (Không Cần Cài Đặt)
+### Quan trọng: không dùng `localhost`
 
-Truy cập trực tiếp đường dẫn GitHub Pages:  
-👉 **[https://thing-or-think.github.io/BT1-WEB/](https://thing-or-think.github.io/BT1-WEB/)**
+playhtml tự đặt tên room theo `window.location.hostname`. Nếu mở trang qua
+`http://127.0.0.1:5500` thì tên room chứa dấu `:` làm vỡ đường dẫn PartyKit, provider
+không bao giờ phát event `sync`, và `playhtml.init()` **treo vĩnh viễn** (nó `await`
+sync mà không có timeout). Vì vậy:
+
+* **Chơi và demo:** mở qua tên miền thật, tức URL GitHub Pages.
+* **Test tự động:** bộ E2E dùng Playwright chặn request cho một hostname `https` giả
+  và phục vụ file từ đĩa, nên mô phỏng đúng môi trường Pages mà không cần localhost.
+
+Nếu vẫn mở bằng localhost, app sẽ báo lỗi kết nối rõ ràng thay vì treo im lặng; các
+chế độ ngoại tuyến (đấu máy, hai người cùng máy) vẫn chơi được bình thường.
+
+### Test
+
+```bash
+npm run test:unit    # 94 test luật chơi + mô hình state, chạy ~25ms, không cần cài gì
+npm install          # chỉ cần cho E2E (Playwright)
+npx playwright install chromium
+npm run test:e2e     # 68 kiểm tra trên browser thật, ~35s
+npm run test:all
+```
+
+E2E kiểm chứng những việc quan trọng nhất:
+
+* A đi quân thì **B thấy ngay**; toàn bộ 81 ô của hai máy khớp nhau; lịch sử nước đi giống nhau.
+* Người chơi phe Xanh **thấy bàn cờ quay 180°** (quân nhà ở phía dưới).
+* Thắng do **ăn hết sạch một loại quân**, hai máy báo kết quả nhất quán, điểm 1–0 không cộng đôi.
+* Nước đi phi luật bơm qua mạng **bị loại**.
+* Nhiều phòng tồn tại song song, state tách biệt.
+* Giải 2 vs 2: 4 vị trí, hai bàn độc lập, điểm đội cập nhật đúng.
+* Khán giả không chiếm ghế, không đi được quân.
+* Chế độ sáng / tối và việc ghi nhớ lựa chọn.
+
+Chạy E2E trên URL đã deploy:
+
+```bash
+OTT_URL=https://<user>.github.io/<repo> npm run test:e2e
+```
+
+### Deploy
+
+Đẩy lên nhánh `main`; workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+chạy unit test rồi publish GitHub Pages.
+
+Workflow publish **cả repo** (không chỉ `client/`) vì `client/index.html` nạp
+`../shared/gameRules.js` ở thư mục gốc — giữ luật chơi ở một nơi duy nhất cho cả
+client và test.
+
+Trong Settings → Pages của repo, chọn **Source: GitHub Actions**.
 
 ---
 
-### Cách 2: Chạy Trên Máy Cục Bộ (Localhost / Mạng LAN)
+## 5. Phân công nhóm
 
-1. **Yêu cầu môi trường**:
-   * Đã cài đặt [Node.js](https://nodejs.org/) (phiên bản 18.x trở lên).
-   * Git.
+Xem [`docs/group-report.md`](docs/group-report.md).
 
-2. **Clone mã nguồn về máy**:
-   ```bash
-   git clone https://github.com/thing-or-think/BT1-WEB.git
-   cd BT1-WEB
-   ```
+## 6. Giấy phép
 
-3. **Cài đặt dependencies**:
-   ```bash
-   npm install
-   ```
-
-4. **Khởi chạy máy chủ**:
-   ```bash
-   npm start
-   ```
-
-5. **Mở trình duyệt**:
-   * Truy cập: `http://localhost:3000`
-   * Để chơi 2 người qua mạng nội bộ: Mở `http://<IP_MÁY_BẠN>:3000` trên thiết bị khác cùng mạng WiFi (ví dụ: `http://192.168.1.15:3000`).
-
----
-
-## 👥 Thành Viên Thực Hiện (Nhóm BTL)
-
-| STT | Họ và Tên | Vai Trò | Nhiệm Vụ Chính |
-|:---:|:---|:---|:---|
-| 1 | **Thành viên 1** | *Leader & Frontend UI* | Thiết kế giao diện SPA, Dark Gaming Theme, Responsive, Vector SVG quân cờ |
-| 2 | **Thành viên 2** | *Client Logic & Audio* | Điều khiển click/drag quân cờ, gợi ý 8 hướng, Web Audio API, Bot AI |
-| 3 | **Thành viên 3** | *Real-Time Network* | Tích hợp Serverless `playhtml.fun` PartyKit, WebRTC P2P, Room Controller |
-| 4 | **Thành viên 4** | *Game Core & QA Lead* | Xây dựng RuleEngine dùng chung, kiểm thử toàn diện, viết tài liệu kỹ thuật |
-
----
-
-## 📜 Giấy Phép (License)
-
-Dự án được phát hành theo giấy phép [MIT License](LICENSE) phục vụ mục đích học tập và nghiên cứu.
+MIT — phục vụ mục đích học tập.
