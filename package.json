@@ -4,11 +4,12 @@
   "description": "Trò chơi cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer Real-time trên nền Web (Serverless với playhtml Cloud & CRDT)",
   "main": "server/server.js",
   "scripts": {
+    "postinstall": "node -e \"require('fs').cpSync('node_modules/playhtml/dist','client/vendor/playhtml',{recursive:true})\"",
     "start": "node server/server.js",
     "server": "node server/server.js",
     "dev": "node server/server.js",
-    "client": "npx serve client -p 5000",
-    "test": "node -e \"console.log('Running rules verification...'); const r = require('./shared/gameRules'); console.log('Rules loaded successfully. Board size:', r.BOARD_SIZE, 'Pieces per side:', 9); process.exit(0);\""
+    "client": "node server/server.js",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "rock-paper-scissors",
@@ -28,6 +29,11 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "playhtml": "2.14.1",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
   }
 }

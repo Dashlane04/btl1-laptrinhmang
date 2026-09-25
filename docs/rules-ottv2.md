@@ -84,15 +84,9 @@ Ván cờ kết thúc ngay lập tức khi xảy ra một trong các điều ki�
 * Nếu **Phe Đỏ** di chuyển thành công một quân bất kỳ vào ô căn cứ của Xanh (**`i9`**), **Phe Đỏ Thắng ngay lập tức**.
 * Nếu **Phe Xanh** di chuyển thành công một quân bất kỳ vào ô căn cứ của Đỏ (**`a1`**), **Phe Xanh Thắng ngay lập tức**.
 
-### 5.2. Thắng bằng cách Tiêu Diệt Toàn Bộ Quân (Annihilation Victory)
-* Nếu toàn bộ 9 quân của một phe bị ăn hết, phe còn lại **Thắng**.
-
-### 5.3. Thắng do Đối Phương Hết Nước Đi (Stalemate / Block Victory)
-* Đến lượt đi của một bên, nhưng tất cả các quân cờ còn lại của bên đó đều bị chặn và không thể thực hiện bất kỳ nước đi hợp lệ nào $\rightarrow$ Bên đó **Thua**, đối phương **Thắng**.
-
-### 5.4. Thắng do Hết Giờ hoặc Đầu Hàng (Timeout / Surrender)
-* **Hết giờ lượt đi**: Mỗi người chơi có một khoảng thời gian quy định cho mỗi nước đi (mặc định 30 giây). Nếu hết giờ mà chưa đi, người đó bị xử **Thua** (hoặc xử thua sau số lần vi phạm liên tiếp quy định).
-* **Đầu hàng**: Người chơi có thể bấm nút **Đầu hàng (Surrender)** bất kỳ lúc nào để nhận thua.
+### 5.2. Thắng bằng cách Tiêu Diệt Một Loại Quân
+* Nếu một phe mất sạch toàn bộ quân **Đấm**, **Lá** hoặc **Kéo**, phe còn lại **Thắng ngay lập tức**.
+* Hết giờ, đầu hàng và hết nước đi không phải điều kiện thắng của bài toán này.
 
 ---
 

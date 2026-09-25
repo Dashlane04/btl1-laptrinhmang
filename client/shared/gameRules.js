@@ -72,7 +72,7 @@
    * @returns {boolean}
    */
   function isValidPosition(r, c) {
-    return r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
+    return Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
   }
 
   /**
@@ -292,35 +292,21 @@
       };
     }
 
-    // 2. Kiểm tra Ăn hết quân (Annihilation)
+    // 2. Mất sạch một loại quân là thua, dù vẫn còn các loại quân khác.
     const counts = countPieces(board);
-    if (counts.RED === 0) {
-      return {
-        isGameOver: true,
-        winner: SIDES.BLUE,
-        reason: 'ALL_PIECES_CAPTURED',
-        message: 'Phe Đỏ đã bị tiêu diệt toàn bộ quân! Phe Xanh thắng cuộc!'
-      };
-    }
-    if (counts.BLUE === 0) {
-      return {
-        isGameOver: true,
-        winner: SIDES.RED,
-        reason: 'ALL_PIECES_CAPTURED',
-        message: 'Phe Xanh đã bị tiêu diệt toàn bộ quân! Phe Đỏ thắng cuộc!'
-      };
-    }
+    const typeNames = { ROCK: 'Đấm', PAPER: 'Lá', SCISSORS: 'Kéo' };
+    const sides = nextTurnSide === SIDES.BLUE ? [SIDES.BLUE, SIDES.RED] : [SIDES.RED, SIDES.BLUE];
 
-    // 3. Kiểm tra Hết nước đi hợp lệ (No Valid Moves)
-    if (nextTurnSide) {
-      const nextMoves = getAllValidMoves(board, nextTurnSide);
-      if (nextMoves.length === 0) {
-        const winner = nextTurnSide === SIDES.RED ? SIDES.BLUE : SIDES.RED;
+    for (const side of sides) {
+      for (const type of Object.values(PIECE_TYPES)) {
+        if (counts.pieces[side].some(({ piece }) => piece.type === type)) continue;
+        const winner = side === SIDES.RED ? SIDES.BLUE : SIDES.RED;
         return {
           isGameOver: true,
-          winner: winner,
-          reason: 'NO_VALID_MOVES',
-          message: `Phe ${nextTurnSide === SIDES.RED ? 'Đỏ' : 'Xanh'} không còn nước đi hợp lệ! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} thắng cuộc!`
+          winner,
+          reason: 'PIECE_TYPE_ELIMINATED',
+          eliminatedType: type,
+          message: `Phe ${side === SIDES.RED ? 'Đỏ' : 'Xanh'} đã mất sạch quân ${typeNames[type]}! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} thắng cuộc!`
         };
       }
     }

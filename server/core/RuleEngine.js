@@ -26,6 +26,10 @@ class RuleEngine {
     const { row: fromRow, col: fromCol } = from;
     const { row: toRow, col: toCol } = to;
 
+    if (![fromRow, fromCol, toRow, toCol].every(n => Number.isInteger(n) && n >= 0 && n < 9)) {
+      return { isValid: false, error: 'Tọa độ phải là số nguyên trong bàn cờ 9×9.' };
+    }
+
     const piece = boardState[fromRow] && boardState[fromRow][fromCol];
     if (!piece) {
       return { isValid: false, error: `Không có quân cờ nào tại ô ${posToNotation(fromRow, fromCol)}!` };

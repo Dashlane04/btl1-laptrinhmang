@@ -3,7 +3,7 @@
  */
 const CONFIG = {
   BOARD_SIZE: 9,
-  DEFAULT_TURN_TIME: 30,
+  DEFAULT_TURN_TIME: 0,
   PIECE_ASSETS: {
     RED: {
       ROCK: 'assets/images/pieces/red_rock.svg',
