@@ -98,10 +98,10 @@ object vừa gán trong cùng một lần `update()` — hai điểm này đều
 | Loại | Số lượng | Thời gian | Lệnh |
 |---|---|---|---|
 | Unit test (luật chơi + mô hình state) | 94 | ~25 ms | `npm run test:unit` |
-| E2E trên browser thật (Playwright) | 68 | ~35 s | `npm run test:e2e` |
+| E2E trên browser thật (Playwright) | 73 | ~35 s | `npm run test:e2e` |
 
-Unit test chạy thuần Node, không cần cài dependency, và được dùng làm cổng chặn trong
-GitHub Actions trước khi deploy.
+Unit test chạy thuần Node, không cần cài dependency, nên GitHub Actions chạy được ngay
+sau mỗi lần push mà không phải cài gì.
 
 E2E mở nhiều browser context thật và kiểm chứng:
 

@@ -133,7 +133,7 @@ chế độ ngoại tuyến (đấu máy, hai người cùng máy) vẫn chơi �
 npm run test:unit    # 94 test luật chơi + mô hình state, chạy ~25ms, không cần cài gì
 npm install          # chỉ cần cho E2E (Playwright)
 npx playwright install chromium
-npm run test:e2e     # 68 kiểm tra trên browser thật, ~35s
+npm run test:e2e     # 73 kiểm tra trên browser thật, ~35s
 npm run test:all
 ```
 
@@ -156,16 +156,16 @@ OTT_URL=https://<user>.github.io/<repo> npm run test:e2e
 
 ### Deploy
 
-Đẩy lên nhánh `main`; workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-chạy unit test rồi publish GitHub Pages.
+Repo đang bật GitHub Pages ở chế độ **Deploy from a branch**: nhánh `main`, thư mục `/`
+(gốc repo). Cứ push vào `main` là Pages tự phát bản mới, không cần job deploy trong
+workflow. Workflow chỉ chạy unit test.
 
-Workflow publish **cả repo** (không chỉ `client/`) vì `client/index.html` nạp
-`../shared/gameRules.js` ở thư mục gốc — giữ luật chơi ở một nơi duy nhất cho cả
-client và test.
+Pages phải phát **gốc repo**, không phải riêng `client/`, vì `client/index.html` nạp
+`../shared/gameRules.js` ở gốc — giữ luật chơi ở một nơi duy nhất cho cả client và test.
+File `index.html` ở gốc lo việc chuyển hướng vào `client/`, kèm `.nojekyll` để Pages
+phát file nguyên trạng.
 
-Trong Settings → Pages của repo, chọn **Source: GitHub Actions**.
-
----
+URL: **https://dashlane04.github.io/btl1-laptrinhmang/**
 
 ## 5. Phân công nhóm
 

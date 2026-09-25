@@ -1,4 +1,4 @@
-name: Test & Deploy GitHub Pages
+name: Test
 
 on:
   push:
@@ -6,15 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   test:
@@ -24,23 +15,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.x
-      # Unit test luật chơi không cần dependency nào
-      - name: Unit test luật chơi
+
+      # Unit test luật chơi + mô hình state: chạy thuần Node, không cần cài gì.
+      - name: Unit test
         run: npm run test:unit
 
-  deploy:
-    needs: test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      # Phát cả repo: client/index.html cần ../shared/gameRules.js ở thư mục gốc
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-      - id: deployment
-        uses: actions/deploy-pages@v4
+# Ghi chú về deploy:
+# Repo này đang bật GitHub Pages ở chế độ "Deploy from a branch" (main, thư mục /).
+# Pages tự phát nội dung ở gốc repo sau mỗi lần push vào main, nên không cần job
+# deploy ở đây. Cấu trúc đã phù hợp: index.html ở gốc chuyển hướng vào client/,
+# và client/index.html nạp ../shared/gameRules.js cũng ở gốc.
+#
+# Nếu muốn chuyển sang deploy bằng GitHub Actions, vào Settings > Pages, đổi
+# Source thành "GitHub Actions", rồi thêm lại job dưới đây:
+#
+#   deploy:
+#     needs: test
+#     if: github.ref == 'refs/heads/main'
+#     runs-on: ubuntu-latest
+#     permissions: { contents: read, pages: write, id-token: write }
+#     environment:
+#       name: github-pages
+#       url: ${{ steps.deployment.outputs.page_url }}
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/configure-pages@v5
+#       - uses: actions/upload-pages-artifact@v3
+#         with: { path: '.' }
+#       - id: deployment
+#         uses: actions/deploy-pages@v4
