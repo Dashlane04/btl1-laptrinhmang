@@ -177,8 +177,9 @@ code, .mono { font-family: var(--mono); font-size: .9em; }
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 12px;
   padding: 10px 20px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(8px);
+  /* Nền đục: thanh này dính ở trên, nếu trong suốt thì nội dung trượt bên dưới
+     sẽ lộ qua và trông như bị cắt đôi. */
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }

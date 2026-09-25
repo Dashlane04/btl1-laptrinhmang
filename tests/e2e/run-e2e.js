@@ -349,6 +349,26 @@ async function testSyncAndOrientation(browser) {
     check('phe Xanh thấy bàn cờ QUAY 180° (góc trên-trái là i1)',
       ordB.first === 'i1' && ordB.last === 'a9', JSON.stringify(ordB));
 
+    // --- CHỌN QUÂN PHẢI HIỆN GỢI Ý NƯỚC ĐI ---
+    await clickCell(A.page, 'e2');
+    const sel = await A.page.evaluate(() => {
+      const cell = document.querySelector('.board-grid .cell[data-pos="e2"]');
+      const moves = Array.from(document.querySelectorAll('.board-grid .cell.is-move')).map(c => c.dataset.pos).sort();
+      const caps = Array.from(document.querySelectorAll('.board-grid .cell.is-capture')).map(c => c.dataset.pos).sort();
+      return { selected: cell.classList.contains('is-selected'), moves, caps };
+    });
+    check('click vào quân thì ô đó được đánh dấu đang chọn', sel.selected, 'thiếu class is-selected');
+    check('hiện đúng các ô đi được của quân Đấm e2',
+      JSON.stringify(sel.moves) === JSON.stringify(['d2', 'd3', 'e1', 'e3', 'f2', 'f3']),
+      JSON.stringify(sel.moves));
+    check('quân cùng phe ở d1/f1 chặn đường, không được gợi ý',
+      !sel.moves.includes('d1') && !sel.moves.includes('f1'), JSON.stringify(sel.moves));
+
+    await clickCell(A.page, 'e2');   // bấm lại để bỏ chọn
+    const cleared = await A.page.evaluate(() =>
+      document.querySelectorAll('.board-grid .cell.is-selected, .board-grid .cell.is-move').length);
+    check('bấm lại chính ô đó thì bỏ chọn và xoá gợi ý', cleared === 0, `còn ${cleared} ô sáng`);
+
     // --- ĐỒNG BỘ NƯỚC ĐI ---
     check('trước khi đi: B thấy e2 có quân Đỏ', (await pieceAt(B.page, 'e2')) !== null, 'e2 rỗng');
 
@@ -798,6 +818,14 @@ async function testOfflineModes(browser) {
 
     await C.page.click('#mode-local');
     await C.page.waitForSelector('#view-match.is-active');
+
+    // gợi ý nước đi cũng phải hoạt động ở chế độ ngoại tuyến
+    await clickCell(C.page, 'e2');
+    const offlineMoves = await C.page.evaluate(() =>
+      document.querySelectorAll('.board-grid .cell.is-move').length);
+    check('chế độ cùng máy: chọn quân cũng hiện gợi ý nước đi', offlineMoves === 6, `${offlineMoves} ô`);
+    await clickCell(C.page, 'e2');
+
     await makeMove(C.page, 'e2', 'e3');
     const moved = await waitFor(C.page, () => {
       const c = document.querySelector('.board-grid .cell[data-pos="e3"]');

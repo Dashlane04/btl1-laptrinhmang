@@ -278,7 +278,9 @@
   function ensureBoard() {
     if (S.boardView) return;
     S.boardView = new OTT.BoardView(el('board'), {
-      onCellClick: (row, col) => S.controller.handleClick(row, col)
+      // Phải vẽ lại ngay sau khi click: việc chọn quân chỉ đổi trạng thái trong
+      // controller, không đi qua state mạng nên không có sự kiện nào kích hoạt render.
+      onCellClick: (row, col) => { S.controller.handleClick(row, col); renderMatch(); }
     });
     S.controller = new OTT.BoardController(S.boardView, {
       onMove: submitMove,
@@ -1020,7 +1022,7 @@
 
     if (!T.view) {
       T.view = new OTT.BoardView(el('team-board'), {
-        onCellClick: (row, col) => T.controller.handleClick(row, col)
+        onCellClick: (row, col) => { T.controller.handleClick(row, col); renderTeam(); }
       });
       T.controller = new OTT.BoardController(T.view, {
         onMove: (from, to) => submitTeamMove(T.mainIdx, from, to),
