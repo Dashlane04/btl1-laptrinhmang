@@ -10,25 +10,6 @@ const gameController = require('../controllers/game.controller');
  * @param {import('socket.io').Server} io 
  */
 function initSocketHandler(io) {
-  // Callback phát timer mỗi giây
-  const handleTick = (roomId, remainingTime, currentTurn) => {
-    io.to(roomId).emit(EVENTS.GAME_TICK, {
-      turnTimeRemaining: remainingTime,
-      currentTurn
-    });
-  };
-
-  // Callback khi hết giờ lượt đi
-  const handleTimeout = (roomId, timedOutSide) => {
-    const room = roomController.getRoom(roomId);
-    if (!room) return;
-
-    const timeoutResult = gameController.handleTimeout(room, timedOutSide);
-    io.to(roomId).emit(EVENTS.GAME_TIMEOUT, timeoutResult);
-    io.to(roomId).emit(EVENTS.GAME_OVER, timeoutResult);
-    io.emit(EVENTS.ROOM_LIST, roomController.getPublicRoomList());
-  };
-
   io.on(EVENTS.CONNECTION, (socket) => {
     // Gửi danh sách phòng ban đầu cho client mới kết nối
     socket.emit(EVENTS.ROOM_LIST, roomController.getPublicRoomList());
@@ -36,8 +17,8 @@ function initSocketHandler(io) {
     // 1. TẠO PHÒNG
     socket.on(EVENTS.ROOM_CREATE, (data) => {
       try {
-        const { roomName, playerName, password, timePerTurn } = data || {};
-        const room = roomController.createRoom(roomName, password, timePerTurn);
+        const { roomId, roomName, playerName, password, timePerTurn } = data || {};
+        const room = roomController.createRoom(roomName, password, timePerTurn, roomId);
         const joinResult = roomController.joinRoom(room.id, socket.id, playerName, password);
 
         socket.join(room.id);
@@ -71,7 +52,7 @@ function initSocketHandler(io) {
 
         // Nếu đã đủ 2 người chơi -> Tự động bắt đầu trận đấu
         if (room.playerRed && room.playerBlue && room.status === 'WAITING') {
-          room.startGame(handleTick, handleTimeout);
+          room.startGame();
           io.to(roomId).emit(EVENTS.GAME_START, {
             message: 'Trận đấu bắt đầu! Phe Đỏ đi trước.',
             room: room.toDetailJSON()
@@ -108,7 +89,7 @@ function initSocketHandler(io) {
         });
 
         if (room.playerRed && room.playerBlue && room.status === 'WAITING') {
-          room.startGame(handleTick, handleTimeout);
+          room.startGame();
           io.to(room.id).emit(EVENTS.GAME_START, {
             message: 'Đã tìm thấy đối thủ! Trận đấu bắt đầu.',
             room: room.toDetailJSON()
@@ -137,14 +118,7 @@ function initSocketHandler(io) {
         }
 
         const { from, to } = data || {};
-        const result = gameController.handleMove(
-          room,
-          playerSide,
-          from,
-          to,
-          handleTick,
-          handleTimeout
-        );
+        const result = gameController.handleMove(room, playerSide, from, to);
 
         if (!result.success) {
           return socket.emit(EVENTS.ERROR_MESSAGE, { message: result.error });
@@ -161,7 +135,7 @@ function initSocketHandler(io) {
 
         // Nếu trận đấu kết thúc
         if (result.isGameOver) {
-          io.to(room.id).emit(EVENTS.GAME_OVER, result.gameOverData);
+          io.to(room.id).emit(EVENTS.GAME_OVER, { ...result.gameOverData, room: room.toDetailJSON() });
           io.emit(EVENTS.ROOM_LIST, roomController.getPublicRoomList());
         }
       } catch (err) {
@@ -169,32 +143,13 @@ function initSocketHandler(io) {
       }
     });
 
-    // 5. ĐẦU HÀNG
-    socket.on(EVENTS.GAME_SURRENDER, () => {
-      try {
-        const room = roomController.getRoomBySocketId(socket.id);
-        if (!room) return;
-
-        const playerSide = room.getSideBySocketId(socket.id);
-        if (!playerSide || playerSide === 'SPECTATOR') return;
-
-        const result = gameController.handleSurrender(room, playerSide);
-        if (result.success) {
-          io.to(room.id).emit(EVENTS.GAME_OVER, result);
-          io.emit(EVENTS.ROOM_LIST, roomController.getPublicRoomList());
-        }
-      } catch (err) {
-        socket.emit(EVENTS.ERROR_MESSAGE, { message: err.message });
-      }
-    });
-
-    // 6. YÊU CẦU ĐẤU LẠI (REMATCH)
+    // 5. YÊU CẦU ĐẤU LẠI (REMATCH)
     socket.on(EVENTS.GAME_REMATCH_REQUEST, () => {
       try {
         const room = roomController.getRoomBySocketId(socket.id);
         if (!room) return;
 
-        const rematchResult = gameController.handleRematch(room, socket.id, handleTick, handleTimeout);
+        const rematchResult = gameController.handleRematch(room, socket.id);
         if (rematchResult.startNewGame) {
           io.to(room.id).emit(EVENTS.GAME_REMATCH_START, {
             message: 'Cả 2 người chơi đã sẵn sàng! Ván đấu mới bắt đầu.',
@@ -210,7 +165,7 @@ function initSocketHandler(io) {
       }
     });
 
-    // 7. TIN NHẮN CHAT & EMOTE
+    // 6. TIN NHẮN CHAT & EMOTE
     socket.on(EVENTS.CHAT_SEND, (data) => {
       const room = roomController.getRoomBySocketId(socket.id);
       if (!room) return;
@@ -220,15 +175,18 @@ function initSocketHandler(io) {
       if (side === 'RED' && room.playerRed) senderName = room.playerRed.name;
       if (side === 'BLUE' && room.playerBlue) senderName = room.playerBlue.name;
 
+      const message = String(data?.message || '').trim().slice(0, 120);
+      if (!message) return;
+
       io.to(room.id).emit(EVENTS.CHAT_RECEIVE, {
         sender: senderName,
         side: side || 'SPECTATOR',
-        message: (data && data.message ? data.message.slice(0, 150) : ''),
+        message,
         timestamp: Date.now()
       });
     });
 
-    // 8. RỜI PHÒNG & NGẮT KẾT NỐI
+    // 7. RỜI PHÒNG & NGẮT KẾT NỐI
     const handleLeave = () => {
       const leaveResult = roomController.leaveRoom(socket.id);
       if (leaveResult.room) {
@@ -242,7 +200,8 @@ function initSocketHandler(io) {
             io.to(room.id).emit(EVENTS.GAME_OVER, {
               winner,
               reason: 'OPPONENT_LEFT',
-              message: `Người chơi phe ${side === 'RED' ? 'Đỏ' : 'Xanh'} đã thoát! Phe ${winner === 'RED' ? 'Đỏ' : 'Xanh'} thắng cuộc.`
+              message: `Người chơi phe ${side === 'RED' ? 'Đỏ' : 'Xanh'} đã thoát! Phe ${winner === 'RED' ? 'Đỏ' : 'Xanh'} thắng cuộc.`,
+              room: room.toDetailJSON()
             });
           }
           io.emit(EVENTS.ROOM_LIST, roomController.getPublicRoomList());

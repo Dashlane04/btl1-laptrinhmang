@@ -292,10 +292,11 @@
       };
     }
 
-    // 2. Mất sạch MỘT loại quân là thua, dù vẫn còn các loại khác.
+    // 2. Mất sạch một loại quân là thua, dù vẫn còn các loại quân khác.
     const counts = countPieces(board);
-    const names = { ROCK: 'Đấm', PAPER: 'Lá', SCISSORS: 'Kéo' };
+    const typeNames = { ROCK: 'Đấm', PAPER: 'Lá', SCISSORS: 'Kéo' };
     const sides = nextTurnSide === SIDES.BLUE ? [SIDES.BLUE, SIDES.RED] : [SIDES.RED, SIDES.BLUE];
+
     for (const side of sides) {
       for (const type of Object.values(PIECE_TYPES)) {
         if (counts.pieces[side].some(({ piece }) => piece.type === type)) continue;
@@ -305,7 +306,7 @@
           winner,
           reason: 'PIECE_TYPE_ELIMINATED',
           eliminatedType: type,
-          message: `Phe ${side === SIDES.RED ? 'Đỏ' : 'Xanh'} đã mất sạch quân ${names[type]}! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} thắng cuộc!`
+          message: `Phe ${side === SIDES.RED ? 'Đỏ' : 'Xanh'} đã mất sạch quân ${typeNames[type]}! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} thắng cuộc!`
         };
       }
     }

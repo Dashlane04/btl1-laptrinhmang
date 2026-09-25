@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const boardContainer = document.getElementById('board-container');
   let renderer = null;
   let controls = null;
-  const playhtmlAdapter = new PlayhtmlAdapter();
+  const selfHosted = typeof io !== 'undefined';
+  const onlineAdapter = selfHosted ? new SocketClient() : new PlayhtmlAdapter();
   const playfullAdapter = new PlayfullAdapter(window);
 
   // Trạng thái cục bộ
@@ -17,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentTurn = GameRules.SIDES.RED;
   let currentRoomId = null;
   let localTimerInterval = null;
-  let localTimeRemaining = CONFIG.DEFAULT_TURN_TIME;
   let playerRedName = 'Người chơi 1 (Đỏ)';
   let playerBlueName = 'Người chơi 2 (Xanh)';
   let scoreRed = 0;
@@ -67,6 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3500);
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[char]);
+  }
+
   // 3. CHUYỂN ĐỔI GIAO DIỆN
   function showView(viewName) {
     const shareBar = document.getElementById('room-share-bar');
@@ -88,43 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. XỬ LÝ NƯỚC ĐI (MOVE EXECUTION)
   function handleMoveExecution(from, to, moveInfo) {
     if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-      // Chế độ Online Serverless (playhtml)
       if (currentTurn !== mySide) {
         showToast('Chưa tới lượt đi của bạn!', 'warning');
         return;
       }
-
-      const moveResult = board.applyMove(from, to);
-
-      if (moveResult.capturedPiece) {
-        sounds.playCapture();
-      } else {
-        sounds.playMove();
-      }
-
-      renderer.renderBoard(board.grid);
-      renderer.highlightLastMove(from, to);
-
-      const notationFrom = GameRules.posToNotation(from.row, from.col);
-      const notationTo = GameRules.posToNotation(to.row, to.col);
-      const notation = `${notationFrom} ➔ ${notationTo}${moveResult.capturedPiece ? ' (Ăn quân)' : ''}`;
-      addMoveToHistory(currentTurn, notation);
-
-      const nextSide = currentTurn === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-      const gameOverResult = ClientRules.checkGameOver(board.grid, nextSide);
-
-      if (gameOverResult.isGameOver) {
-        handleGameOver(gameOverResult.winner, gameOverResult.message);
-        playhtmlAdapter.notifyGameOver(gameOverResult.winner, gameOverResult.message);
-      }
-
-      currentTurn = nextSide;
-      updateTurnUI();
-      startLocalTimer();
-
-      // Đồng bộ nước đi cho đối thủ
-      playhtmlAdapter.sendMove(from, to, board.grid, moveResult.capturedPiece, notation, nextSide);
-      controls.setGameState(currentTurn, mySide, currentTurn === mySide);
+      onlineAdapter.sendMove(from, to);
+      controls.setGameState(currentTurn, mySide, false);
     } else {
       // Chế độ Offline Pass & Play / AI Bot
       const moveResult = board.applyMove(from, to);
@@ -202,30 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 6. ĐỒNG HỒ ĐẾM NGƯỢC LƯỢT ĐI (TURN TIMER)
-  function startLocalTimer(timeLimit) {
+  function startLocalTimer() {
     stopLocalTimer();
-    localTimeRemaining = timeLimit || CONFIG.DEFAULT_TURN_TIME;
-    updateTimerDisplay(localTimeRemaining);
-
-    localTimerInterval = setInterval(() => {
-      localTimeRemaining--;
-      updateTimerDisplay(localTimeRemaining);
-
-      if (localTimeRemaining <= 5 && localTimeRemaining > 0) {
-        sounds.playWarning();
-      }
-
-      if (localTimeRemaining <= 0) {
-        stopLocalTimer();
-        const winner = currentTurn === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-        const msg = `Phe ${currentTurn === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã hết thời gian lượt đi!`;
-        handleGameOver(winner, msg);
-
-        if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-          playhtmlAdapter.notifyGameOver(winner, msg);
-        }
-      }
-    }, 1000);
+    updateTimerDisplay('∞');
   }
 
   function stopLocalTimer() {
@@ -237,6 +191,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateTimerDisplay(seconds) {
     if (!timerCountdownEl) return;
+    if (seconds === '∞') {
+      timerCountdownEl.textContent = seconds;
+      timerCountdownEl.classList.remove('warning');
+      return;
+    }
     const s = Math.max(0, seconds);
     timerCountdownEl.textContent = s < 10 ? `0${s}` : s;
     if (s <= 5) {
@@ -258,17 +217,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!moveHistoryListEl) return;
     const item = document.createElement('div');
     item.className = `history-item ${side.toLowerCase()}`;
-    item.innerHTML = `<span>#${moveHistoryListEl.children.length + 1} [${side === GameRules.SIDES.RED ? 'ĐỎ' : 'XANH'}]</span> <span>${text}</span>`;
+    const label = document.createElement('span');
+    label.textContent = `#${moveHistoryListEl.children.length + 1} [${side === GameRules.SIDES.RED ? 'ĐỎ' : 'XANH'}]`;
+    const description = document.createElement('span');
+    description.textContent = text;
+    item.append(label, description);
     moveHistoryListEl.appendChild(item);
     moveHistoryListEl.scrollTop = moveHistoryListEl.scrollHeight;
   }
 
-  function handleGameOver(winner, message) {
+  function handleGameOver(winner, message, incrementScore = true) {
+    if (gameOverModal.classList.contains('active')) return;
     stopLocalTimer();
     sounds.playWin();
 
-    if (winner === GameRules.SIDES.RED) scoreRed++;
-    if (winner === GameRules.SIDES.BLUE) scoreBlue++;
+    if (incrementScore && winner === GameRules.SIDES.RED) scoreRed++;
+    if (incrementScore && winner === GameRules.SIDES.BLUE) scoreBlue++;
     updateScores();
 
     const titleEl = document.getElementById('game-over-title');
@@ -342,20 +306,25 @@ document.addEventListener('DOMContentLoaded', () => {
     resetGameBoard();
     showView('arena');
 
-    // Khởi tạo adapter
-    const joinResult = await playhtmlAdapter.init(roomId, nickname, isHost, {
-      ...options,
-      initialBoard: board.grid
-    });
+    let joinResult;
+    try {
+      joinResult = await onlineAdapter.init(roomId, nickname, isHost, { ...options, initialBoard: board.grid });
+    } catch (error) {
+      showToast(error.message || 'Không thể vào phòng.', 'warning');
+      showView('lobby');
+      return;
+    }
 
     mySide = joinResult.mySide;
     const roomState = joinResult.roomState;
+    currentRoomId = joinResult.roomId;
+    currentTurn = roomState.currentTurn || GameRules.SIDES.RED;
 
     // Cập nhật thông tin phòng trên thanh chia sẻ
     const shareInput = document.getElementById('share-room-url');
     const badgeEl = document.getElementById('room-code-badge');
-    if (shareInput) shareInput.value = playhtmlAdapter.getShareUrl();
-    if (badgeEl) badgeEl.textContent = `Mã: ${roomId}`;
+    if (shareInput) shareInput.value = onlineAdapter.getShareUrl();
+    if (badgeEl) badgeEl.textContent = `Mã: ${currentRoomId}`;
 
     // Cập nhật tên người chơi
     playerRedName = (roomState.hostName || 'Chủ phòng') + ' (Đỏ)';
@@ -364,13 +333,13 @@ document.addEventListener('DOMContentLoaded', () => {
     pBlueNameEl.textContent = playerBlueName;
 
     // Phân quyền tương tác
-    const isMyTurn = (currentTurn === mySide) && (mySide !== null);
+    const isMyTurn = roomState.status === 'PLAYING' && currentTurn === mySide && mySide !== null;
     controls.setGameState(currentTurn, mySide, isMyTurn);
 
     if (isHost) {
-      showToast(`🎉 Đã tạo phòng #${roomId}! Hãy sao chép link mời gửi cho bạn bè.`, 'success');
+      showToast(`🎉 Đã tạo phòng #${currentRoomId}! Hãy sao chép link mời gửi cho bạn bè.`, 'success');
     } else {
-      showToast(`Đã tham gia phòng #${roomId} (${joinResult.role}: ${mySide || 'Khán giả'})!`, 'success');
+      showToast(`Đã tham gia phòng #${currentRoomId} (${joinResult.role}: ${mySide || 'Khán giả'})!`, 'success');
     }
 
     if (roomState.status === 'PLAYING') {
@@ -379,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 9. LẮNG NGHE SỰ KIỆN TỪ PLAYHTML ADAPTER
-  playhtmlAdapter.on('state:updated', ({ roomState, mySide: updatedSide, role }) => {
+  onlineAdapter.on('state:updated', ({ roomState, mySide: updatedSide, role }) => {
     if (currentMode !== CONFIG.GAME_MODES.PLAYHTML) return;
 
     // Cập nhật bàn cờ
@@ -396,8 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         sounds.playMove();
       }
-      if (moveHistoryListEl && moveHistoryListEl.children.length === 0 && roomState.moveHistory) {
-        // Tái tạo lịch sử nếu mới vào phòng
+      if (moveHistoryListEl && roomState.moveHistory && moveHistoryListEl.children.length !== roomState.moveHistory.length) {
+        moveHistoryListEl.innerHTML = '';
         roomState.moveHistory.forEach(m => addMoveToHistory(m.side, m.notation));
       }
     }
@@ -427,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (roomState.status === 'FINISHED') {
       stopLocalTimer();
       if (roomState.gameOver) {
-        handleGameOver(roomState.gameOver.winner, roomState.gameOver.message);
+        handleGameOver(roomState.gameOver.winner, roomState.gameOver.message, false);
       }
     }
 
@@ -437,16 +406,21 @@ document.addEventListener('DOMContentLoaded', () => {
     controls.setGameState(currentTurn, mySide, canMove);
   });
 
-  playhtmlAdapter.on('chat:receive', (data) => {
+  onlineAdapter.on('chat:receive', (data) => {
     if (!chatMessagesEl) return;
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble';
-    bubble.innerHTML = `<div class="chat-sender ${data.side ? data.side.toLowerCase() : 'spectator'}">${data.sender}</div><div>${data.message}</div>`;
+    const sender = document.createElement('div');
+    sender.className = `chat-sender ${data.side ? data.side.toLowerCase() : 'spectator'}`;
+    sender.textContent = data.sender;
+    const message = document.createElement('div');
+    message.textContent = data.message;
+    bubble.append(sender, message);
     chatMessagesEl.appendChild(bubble);
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   });
 
-  playhtmlAdapter.on('game:reset', (data) => {
+  onlineAdapter.on('game:reset', (data) => {
     if (data.board) board.setState(data.board);
     currentTurn = data.currentTurn || GameRules.SIDES.RED;
     resetGameBoard();
@@ -457,15 +431,17 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Ván đấu mới đã bắt đầu!', 'success');
   });
 
-  playhtmlAdapter.on('rematch:waiting', (data) => {
+  onlineAdapter.on('rematch:waiting', (data) => {
     showToast(data.message, 'info');
   });
 
-  playhtmlAdapter.on('network:status', (data) => {
-    if (data.status === 'CONNECTED_TO_HOST') {
-      showToast('🔗 Đã kết nối P2P thành công với Chủ phòng!', 'success');
-    } else if (data.status === 'HOST_DISCONNECTED') {
-      showToast('⚠️ Chủ phòng đã ngắt kết nối!', 'warning');
+  onlineAdapter.on('network:status', (data) => {
+    if (data.status === 'CONNECTED_TO_SERVER') {
+      connectionStatus.textContent = '🟢 Server Online';
+    } else if (data.status === 'SERVER_DISCONNECTED') {
+      showToast('⚠️ Mất kết nối tới máy chủ!', 'warning');
+    } else if (data.status === 'ERROR') {
+      showToast(data.message, 'warning');
     }
   });
 
@@ -495,16 +471,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let serverlessRooms = PlayhtmlAdapter.getDiscoveredRooms() || [];
     let serverRooms = [];
 
-    try {
-      const res = await fetch('/api/rooms', { cache: 'no-cache' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.rooms) {
-          serverRooms = data.rooms;
+    if (selfHosted) {
+      try {
+        const res = await fetch('/api/rooms', { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.rooms) {
+            serverRooms = data.rooms;
+          }
         }
+      } catch (e) {
+        // Server vừa ngắt kết nối; danh sách cloud/local vẫn dùng được.
       }
-    } catch (e) {
-      // Chế độ static offline
     }
 
     const roomMap = new Map();
@@ -581,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let emptyMsg = 'Chưa có phòng nào đang mở trên hệ thống.';
       if (activeRoomFilter === 'WAITING') emptyMsg = 'Hiện không có phòng nào đang chờ người.';
       if (activeRoomFilter === 'PLAYING') emptyMsg = 'Hiện chưa có trận đấu nào đang diễn ra.';
-      if (roomSearchKeyword) emptyMsg = `Không tìm thấy phòng nào phù hợp với "${roomSearchKeyword}".`;
+      if (roomSearchKeyword) emptyMsg = `Không tìm thấy phòng nào phù hợp với "${escapeHtml(roomSearchKeyword)}".`;
 
       grid.innerHTML = `
         <div class="room-empty-state">
@@ -602,9 +580,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const now = Date.now();
     grid.innerHTML = filtered.map(r => {
-      const isWaiting = r.status === 'WAITING';
-      const isPlaying = r.status === 'PLAYING';
-      const isFinished = r.status === 'FINISHED';
+      const status = ['WAITING', 'PLAYING', 'FINISHED'].includes(r.status) ? r.status : 'FINISHED';
+      const isWaiting = status === 'WAITING';
+      const isPlaying = status === 'PLAYING';
+      const isFinished = status === 'FINISHED';
+      const roomId = escapeHtml(r.id);
+      const roomName = escapeHtml(r.name || ('Phòng #' + r.id));
 
       // Badge trạng thái
       let statusBadgeHtml = '';
@@ -617,9 +598,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Tên người chơi & Điểm số
-      const redName = r.playerRed?.name || 'Chủ phòng (Đỏ)';
+      const redName = escapeHtml(r.playerRed?.name || 'Chủ phòng (Đỏ)');
       const redScore = r.scores?.red || r.playerRed?.score || 0;
-      const blueName = r.playerBlue?.name || (isWaiting ? 'Đang đợi đối thủ...' : 'Khách (Xanh)');
+      const blueName = escapeHtml(r.playerBlue?.name || (isWaiting ? 'Đang đợi đối thủ...' : 'Khách (Xanh)'));
       const blueScore = r.scores?.blue || r.playerBlue?.score || 0;
 
       // Tính thời gian ban đầu
@@ -640,20 +621,20 @@ document.addEventListener('DOMContentLoaded', () => {
       // Nút hành động
       let actionBtnHtml = '';
       if (isWaiting) {
-        actionBtnHtml = `<button class="btn btn-success btn-action" data-action="join" data-room-id="${r.id}">⚔️ Tham Chiến Ngay</button>`;
+        actionBtnHtml = `<button class="btn btn-success btn-action" data-action="join" data-room-id="${roomId}">⚔️ Tham Chiến Ngay</button>`;
       } else if (isPlaying) {
-        actionBtnHtml = `<button class="btn btn-primary btn-action" data-action="spectate" data-room-id="${r.id}">👁️ Xem Trực Tiếp</button>`;
+        actionBtnHtml = `<button class="btn btn-primary btn-action" data-action="spectate" data-room-id="${roomId}">👁️ Xem Trực Tiếp</button>`;
       } else {
-        actionBtnHtml = `<button class="btn btn-secondary btn-action" data-action="spectate" data-room-id="${r.id}">👁️ Xem Bàn Cờ</button>`;
+        actionBtnHtml = `<button class="btn btn-secondary btn-action" data-action="spectate" data-room-id="${roomId}">👁️ Xem Bàn Cờ</button>`;
       }
 
       return `
-        <div class="room-card status-${r.status.toLowerCase()}" data-room-id="${r.id}">
+        <div class="room-card status-${status.toLowerCase()}" data-room-id="${roomId}">
           <div class="room-card-header">
             <div class="room-title-area">
-              <div class="room-name" title="${r.name || ('Phòng #' + r.id)}">${r.name || ('Phòng #' + r.id)}</div>
+              <div class="room-name" title="${roomName}">${roomName}</div>
               <div class="room-id-tag">
-                <span>Mã: <code>${r.id}</code></span>
+                <span>Mã: <code>${roomId}</code></span>
               </div>
             </div>
             ${statusBadgeHtml}
@@ -678,10 +659,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="room-timing-row">
               <div class="${chipClass}">
-                <span class="live-timer-text" data-timer-target="${r.id}">${initialTimerText}</span>
+                <span class="live-timer-text" data-timer-target="${roomId}">${initialTimerText}</span>
               </div>
               <div class="room-meta-tags">
-                <span>⌛ ${r.timePerTurn || 30}s/lượt</span>
+                <span>⌛ ${r.timePerTurn > 0 ? `${r.timePerTurn}s` : '∞'}/lượt</span>
                 <span>👁️ ${r.spectatorCount || 0}</span>
                 <span>🎯 ${r.moveCount || 0} nước</span>
               </div>
@@ -690,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div class="room-card-actions">
             ${actionBtnHtml}
-            <button class="btn btn-secondary btn-copy-mini" data-action="copy" data-room-id="${r.id}" title="Sao chép link mời phòng">
+            <button class="btn btn-secondary btn-copy-mini" data-action="copy" data-room-id="${roomId}" title="Sao chép link mời phòng">
               📋
             </button>
           </div>
@@ -841,7 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-create-room')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const roomName = document.getElementById('input-room-name')?.value.trim() || 'Phòng Chiến Thuật';
-    const timePerTurn = parseInt(document.getElementById('select-time-turn')?.value, 10) || 30;
+    const timePerTurn = 0;
     const randomCode = 'ott-' + Math.random().toString(36).substring(2, 8);
 
     createRoomModal.classList.remove('active');
@@ -887,26 +868,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Đầu hàng
-  document.getElementById('btn-surrender')?.addEventListener('click', () => {
-    if (confirm('Bạn có chắc chắn muốn đầu hàng ván đấu này?')) {
-      if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-        const winner = mySide === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-        const msg = `Phe ${mySide === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã chủ động đầu hàng!`;
-        playhtmlAdapter.notifyGameOver(winner, msg);
-        handleGameOver(winner, msg);
-      } else {
-        const winner = currentTurn === GameRules.SIDES.RED ? GameRules.SIDES.BLUE : GameRules.SIDES.RED;
-        handleGameOver(winner, `Phe ${currentTurn === GameRules.SIDES.RED ? 'Đỏ' : 'Xanh'} đã chủ động đầu hàng!`);
-      }
-    }
-  });
-
   // Rời phòng về sảnh chờ
   document.getElementById('btn-leave-arena')?.addEventListener('click', () => {
     if (confirm('Rời khỏi trận đấu và quay về sảnh chính?')) {
       if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-        playhtmlAdapter.leaveRoom();
+        onlineAdapter.leaveRoom();
       }
       stopLocalTimer();
       showView('lobby');
@@ -917,8 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Đấu lại (Rematch)
   document.getElementById('btn-rematch')?.addEventListener('click', () => {
     if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-      const freshBoard = new ClientBoard();
-      playhtmlAdapter.requestRematch(freshBoard.grid);
+      onlineAdapter.requestRematch();
     } else {
       gameOverModal.classList.remove('active');
       resetGameBoard();
@@ -952,12 +917,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = chatInputEl.value.trim();
     if (!text) return;
     if (currentMode === CONFIG.GAME_MODES.PLAYHTML) {
-      playhtmlAdapter.sendChat(text);
+      onlineAdapter.sendChat(text);
     } else {
       // Local chat echo
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble';
-      bubble.innerHTML = `<div class="chat-sender red">Bạn</div><div>${text}</div>`;
+      const sender = document.createElement('div');
+      sender.className = 'chat-sender red';
+      sender.textContent = 'Bạn';
+      const message = document.createElement('div');
+      message.textContent = text;
+      bubble.append(sender, message);
       chatMessagesEl.appendChild(bubble);
       chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     }

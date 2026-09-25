@@ -16,7 +16,8 @@ class Room {
     this.id = id;
     this.name = name || `Phòng #${id.slice(-4)}`;
     this.password = password || '';
-    this.timePerTurn = parseInt(timePerTurn, 10) || config.DEFAULT_TURN_TIME;
+    const parsedTime = Number.parseInt(timePerTurn, 10);
+    this.timePerTurn = Number.isFinite(parsedTime) && parsedTime > 0 ? parsedTime : 0;
 
     this.status = 'WAITING'; // 'WAITING' | 'PLAYING' | 'FINISHED'
     this.playerRed = null;   // { socketId, name, score: 0 }
@@ -25,8 +26,7 @@ class Room {
 
     this.board = new Board();
     this.currentTurn = SIDES.RED;
-    this.turnTimeRemaining = this.timePerTurn;
-    this.timerInterval = null;
+    this.turnTimeRemaining = null;
 
     this.moveHistory = [];
     this.rematchVotes = new Set();
@@ -91,7 +91,6 @@ class Room {
     if (wasPlayer && this.status === 'PLAYING') {
       this.status = 'FINISHED';
       this.finishedAt = Date.now();
-      this.stopTimer();
     }
 
     const isEmpty = !this.playerRed && !this.playerBlue && this.spectators.length === 0;
@@ -113,7 +112,7 @@ class Room {
   /**
    * Bắt đầu trận đấu khi đủ 2 người
    */
-  startGame(onTickCallback, onTimeoutCallback) {
+  startGame() {
     this.status = 'PLAYING';
     this.gameStartedAt = Date.now();
     this.finishedAt = null;
@@ -121,48 +120,13 @@ class Room {
     this.currentTurn = SIDES.RED;
     this.moveHistory = [];
     this.rematchVotes.clear();
-    this.startTurnTimer(onTickCallback, onTimeoutCallback);
-  }
-
-  /**
-   * Bắt đầu đồng hồ đếm ngược lượt đi
-   */
-  startTurnTimer(onTickCallback, onTimeoutCallback) {
-    this.stopTimer();
-    this.turnTimeRemaining = this.timePerTurn;
-
-    this.timerInterval = setInterval(() => {
-      this.turnTimeRemaining--;
-
-      if (typeof onTickCallback === 'function') {
-        onTickCallback(this.id, this.turnTimeRemaining, this.currentTurn);
-      }
-
-      if (this.turnTimeRemaining <= 0) {
-        this.stopTimer();
-        if (typeof onTimeoutCallback === 'function') {
-          onTimeoutCallback(this.id, this.currentTurn);
-        }
-      }
-    }, 1000);
-  }
-
-  /**
-   * Dừng timer
-   */
-  stopTimer() {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
   }
 
   /**
    * Chuyển lượt đi sang đối thủ
    */
-  switchTurn(onTickCallback, onTimeoutCallback) {
+  switchTurn() {
     this.currentTurn = this.currentTurn === SIDES.RED ? SIDES.BLUE : SIDES.RED;
-    this.startTurnTimer(onTickCallback, onTimeoutCallback);
   }
 
   /**
@@ -218,7 +182,7 @@ class Room {
       playerBlue: this.playerBlue ? { name: this.playerBlue.name, score: this.playerBlue.score || 0 } : null,
       timePerTurn: this.timePerTurn,
       currentTurn: this.status === 'PLAYING' ? this.currentTurn : null,
-      turnTimeRemaining: this.status === 'PLAYING' ? this.turnTimeRemaining : null,
+      turnTimeRemaining: null,
       createdAt: this.createdAt,
       gameStartedAt: this.gameStartedAt,
       finishedAt: this.finishedAt,
@@ -236,9 +200,9 @@ class Room {
     const summary = this.toSummaryJSON();
     return {
       ...summary,
-      playerRed: this.playerRed,
-      playerBlue: this.playerBlue,
-      spectators: this.spectators,
+      playerRed: this.playerRed ? { name: this.playerRed.name, score: this.playerRed.score || 0 } : null,
+      playerBlue: this.playerBlue ? { name: this.playerBlue.name, score: this.playerBlue.score || 0 } : null,
+      spectators: this.spectators.map(({ name }) => ({ name })),
       board: this.board.getState(),
       currentTurn: this.currentTurn,
       timePerTurn: this.timePerTurn,

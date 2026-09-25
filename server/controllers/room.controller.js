@@ -12,7 +12,8 @@ class RoomController {
     this.userRoomMap = new Map();
 
     // Dọn dẹp định kỳ
-    setInterval(() => this.cleanupIdleRooms(), config.CLEANUP_INTERVAL_MS);
+    const cleanupTimer = setInterval(() => this.cleanupIdleRooms(), config.CLEANUP_INTERVAL_MS);
+    cleanupTimer.unref?.();
   }
 
   /**
@@ -22,91 +23,22 @@ class RoomController {
    * @param {number} timePerTurn 
    * @returns {Room}
    */
-  createRoom(roomName, password = '', timePerTurn = config.DEFAULT_TURN_TIME) {
+  createRoom(roomName, password = '', timePerTurn = config.DEFAULT_TURN_TIME, requestedId = '') {
     if (this.rooms.size >= config.MAX_ROOMS) {
       throw new Error('Hệ thống máy chủ đã đạt giới hạn số phòng tối đa!');
     }
 
-    const roomId = 'room_' + Math.random().toString(36).substring(2, 8);
-    const room = new Room(roomId, roomName, password, timePerTurn);
+    const roomId = requestedId || ('ott-' + Math.random().toString(36).substring(2, 8));
+    if (!/^ott-[a-z0-9]{4,12}$/.test(roomId)) {
+      throw new Error('Mã phòng phải có dạng ott-xxxx.');
+    }
+    if (this.rooms.has(roomId)) {
+      throw new Error('Mã phòng đã tồn tại, vui lòng tạo phòng khác.');
+    }
+
+    const room = new Room(roomId, String(roomName || '').trim().slice(0, 30), password, timePerTurn);
     this.rooms.set(roomId, room);
     return room;
-  }
-
-  /**
-   * Đăng ký hoặc cập nhật phòng từ Client (Hỗ trợ đa máy / Cross-Device Sync)
-   * @param {Object} data 
-   * @returns {Room}
-   */
-  registerOrUpdateRoom(data = {}) {
-    const roomId = data.id || data.roomId;
-    if (!roomId) throw new Error('Mã phòng không hợp lệ!');
-
-    let room = this.rooms.get(roomId);
-    if (!room) {
-      if (this.rooms.size >= config.MAX_ROOMS) {
-        throw new Error('Hệ thống đã đạt giới hạn số phòng tối đa!');
-      }
-      room = new Room(roomId, data.name || data.roomName, data.password || '', data.timePerTurn || config.DEFAULT_TURN_TIME);
-      if (data.createdAt) room.createdAt = data.createdAt;
-      this.rooms.set(roomId, room);
-    }
-
-    // Cập nhật thông tin phòng
-    if (data.name) room.name = data.name;
-    if (data.status) room.status = data.status;
-    if (data.timePerTurn) room.timePerTurn = parseInt(data.timePerTurn, 10) || room.timePerTurn;
-    if (data.gameStartedAt !== undefined) room.gameStartedAt = data.gameStartedAt;
-    if (data.finishedAt !== undefined) room.finishedAt = data.finishedAt;
-    if (data.scores) room.scores = { ...room.scores, ...data.scores };
-
-    // Cập nhật thông tin người chơi
-    if (data.playerRed) {
-      room.playerRed = typeof data.playerRed === 'string' ? { name: data.playerRed, score: 0 } : data.playerRed;
-    } else if (data.hostName) {
-      room.playerRed = { name: data.hostName, score: data.scores?.red || 0 };
-    }
-
-    if (data.playerBlue !== undefined) {
-      room.playerBlue = typeof data.playerBlue === 'string' ? { name: data.playerBlue, score: 0 } : data.playerBlue;
-    } else if (data.guestName !== undefined) {
-      room.playerBlue = data.guestName ? { name: data.guestName, score: data.scores?.blue || 0 } : null;
-    }
-
-    if (data.spectatorCount !== undefined) {
-      room.spectatorCountOverride = data.spectatorCount;
-    }
-
-    room.lastActivityAt = Date.now();
-    return room;
-  }
-
-  /**
-   * Cập nhật nhịp tim (Heartbeat) của phòng
-   * @param {string} roomId 
-   * @returns {boolean}
-   */
-  touchRoom(roomId) {
-    const room = this.rooms.get(roomId);
-    if (room) {
-      room.lastActivityAt = Date.now();
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Xoá phòng thủ công khi chủ phòng đóng phòng
-   * @param {string} roomId 
-   * @returns {boolean}
-   */
-  deleteRoom(roomId) {
-    const room = this.rooms.get(roomId);
-    if (room) {
-      room.stopTimer();
-      return this.rooms.delete(roomId);
-    }
-    return false;
   }
 
   /**
@@ -155,6 +87,9 @@ class RoomController {
    * @returns {{ room: Room, role: string, side: string|null }}
    */
   joinRoom(roomId, socketId, playerName, password = '') {
+    if (typeof roomId !== 'string' || !/^ott-[a-z0-9]{4,12}$/.test(roomId)) {
+      throw new Error('Mã phòng không hợp lệ!');
+    }
     const room = this.getRoom(roomId);
     if (!room) {
       throw new Error('Phòng không tồn tại hoặc đã bị đóng!');
@@ -166,7 +101,14 @@ class RoomController {
       }
     }
 
-    const joinResult = room.addPlayer(socketId, playerName);
+    const currentRoom = this.getRoomBySocketId(socketId);
+    if (currentRoom && currentRoom.id !== roomId) this.leaveRoom(socketId);
+
+    const safeName = String(playerName || '').trim().slice(0, 30) || 'Người chơi';
+    const existingSide = room.getSideBySocketId(socketId);
+    const joinResult = existingSide
+      ? { role: existingSide === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER', side: existingSide === 'SPECTATOR' ? null : existingSide }
+      : room.addPlayer(socketId, safeName);
     this.userRoomMap.set(socketId, roomId);
 
     return {
@@ -193,7 +135,6 @@ class RoomController {
     const removeResult = room.removeUser(socketId);
 
     if (removeResult.isEmpty) {
-      room.stopTimer();
       this.rooms.delete(roomId);
     }
 
@@ -270,7 +211,6 @@ class RoomController {
 
     for (const [roomId, room] of this.rooms.entries()) {
       if (now - room.lastActivityAt > IDLE_LIMIT || (!room.playerRed && !room.playerBlue)) {
-        room.stopTimer();
         this.rooms.delete(roomId);
       }
     }

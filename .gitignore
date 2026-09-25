@@ -1,9 +1,9 @@
 # Node dependencies
 node_modules/
+client/vendor/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
 # Environment variables
 .env
 .env.local
@@ -15,8 +15,7 @@ Thumbs.db
 *.log
 
 # IDE & Editor files
-.vscode/*
-!.vscode/tasks.json
+.vscode/
 .idea/
 *.suo
 *.ntvs*

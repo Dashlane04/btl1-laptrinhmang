@@ -15,7 +15,7 @@ class GameController {
    * @param {Function} onTimeout - Callback khi hết giờ
    * @returns {{ success: boolean, error?: string, moveRecord?: Object, isGameOver?: boolean, gameOverData?: Object }}
    */
-  handleMove(room, playerSide, from, to, onTick, onTimeout) {
+  handleMove(room, playerSide, from, to) {
     if (!room || room.status !== 'PLAYING') {
       return { success: false, error: 'Trận đấu chưa bắt đầu hoặc đã kết thúc!' };
     }
@@ -52,7 +52,7 @@ class GameController {
 
     if (gameOverResult.isGameOver) {
       room.status = 'FINISHED';
-      room.stopTimer();
+      room.finishedAt = Date.now();
 
       // Cộng điểm cho người thắng
       if (gameOverResult.winner === SIDES.RED && room.playerRed) {
@@ -70,7 +70,7 @@ class GameController {
     }
 
     // 6. Chuyển lượt và reset đồng hồ đếm ngược
-    room.switchTurn(onTick, onTimeout);
+    room.switchTurn();
 
     return {
       success: true,
@@ -82,53 +82,6 @@ class GameController {
   }
 
   /**
-   * Xử lý khi người chơi chủ động Đầu Hàng
-   * @param {Object} room 
-   * @param {string} playerSide 
-   * @returns {Object}
-   */
-  handleSurrender(room, playerSide) {
-    if (!room || room.status !== 'PLAYING') {
-      return { success: false, error: 'Không thể đầu hàng lúc này!' };
-    }
-
-    const winner = playerSide === SIDES.RED ? SIDES.BLUE : SIDES.RED;
-    room.status = 'FINISHED';
-    room.stopTimer();
-
-    if (winner === SIDES.RED && room.playerRed) room.playerRed.score = (room.playerRed.score || 0) + 1;
-    if (winner === SIDES.BLUE && room.playerBlue) room.playerBlue.score = (room.playerBlue.score || 0) + 1;
-
-    return {
-      success: true,
-      winner,
-      reason: 'SURRENDER',
-      message: `Phe ${playerSide === SIDES.RED ? 'Đỏ' : 'Xanh'} đã đầu hàng! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} giành chiến thắng!`
-    };
-  }
-
-  /**
-   * Xử lý khi người chơi hết thời gian suy nghĩ lượt
-   * @param {Object} room 
-   * @param {string} timedOutSide 
-   * @returns {Object}
-   */
-  handleTimeout(room, timedOutSide) {
-    const winner = timedOutSide === SIDES.RED ? SIDES.BLUE : SIDES.RED;
-    room.status = 'FINISHED';
-    room.stopTimer();
-
-    if (winner === SIDES.RED && room.playerRed) room.playerRed.score = (room.playerRed.score || 0) + 1;
-    if (winner === SIDES.BLUE && room.playerBlue) room.playerBlue.score = (room.playerBlue.score || 0) + 1;
-
-    return {
-      winner,
-      reason: 'TIMEOUT',
-      message: `Phe ${timedOutSide === SIDES.RED ? 'Đỏ' : 'Xanh'} đã hết thời gian lượt đi! Phe ${winner === SIDES.RED ? 'Đỏ' : 'Xanh'} giành chiến thắng!`
-    };
-  }
-
-  /**
    * Xử lý bầu chọn đấu lại (Rematch)
    * @param {Object} room 
    * @param {string} socketId 
@@ -136,7 +89,7 @@ class GameController {
    * @param {Function} onTimeout 
    * @returns {{ requested: boolean, startNewGame: boolean }}
    */
-  handleRematch(room, socketId, onTick, onTimeout) {
+  handleRematch(room, socketId) {
     if (!room || room.status !== 'FINISHED') {
       return { requested: false, startNewGame: false, error: 'Chỉ có thể yêu cầu đấu lại khi ván cờ kết thúc!' };
     }
@@ -148,7 +101,7 @@ class GameController {
     const blueReady = room.playerBlue && room.rematchVotes.has(room.playerBlue.socketId);
 
     if (redReady && blueReady) {
-      room.startGame(onTick, onTimeout);
+      room.startGame();
       return { requested: true, startNewGame: true };
     }
 

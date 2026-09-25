@@ -194,53 +194,32 @@ Server kiểm tra hợp lệ, cập nhật trạng thái bàn cờ và thông b�
 * **Payload**:
 ```json
 {
-  "from": { "row": 1, "col": 1 },
-  "to": { "row": 2, "col": 2 },
-  "movedPiece": { "type": "ROCK", "side": "RED" },
-  "capturedPiece": { "type": "SCISSORS", "side": "BLUE" }, // hoặc null
+  "moveRecord": {
+    "from": { "row": 8, "col": 1 },
+    "to": { "row": 7, "col": 1 },
+    "side": "RED",
+    "capturedPiece": null
+  },
   "nextTurn": "BLUE",
-  "turnTimeRemaining": 30,
-  "boardState": [...]
+  "board": [...],
+  "stats": { "RED": 9, "BLUE": 9 }
 }
 ```
 
-#### C. Server $\rightarrow$ Client: `game:tick`
-Phát định kỳ mỗi giây để đồng bộ đồng hồ đếm ngược lượt đi.
-* **Payload**:
-```json
-{
-  "turnTimeRemaining": 24,
-  "currentTurn": "RED"
-}
-```
-
-#### D. Server $\rightarrow$ Client: `game:timeout`
-Khi người chơi hiện tại hết thời gian suy nghĩ lượt.
-* **Payload**:
-```json
-{
-  "timedOutSide": "RED",
-  "winner": "BLUE",
-  "reason": "TIMEOUT"
-}
-```
-
-#### E. Client $\rightarrow$ Server: `game:surrender`
-Người chơi chủ động đầu hàng.
-* **Payload**: `{}`
-
-#### F. Server $\rightarrow$ Client: `game:over`
+#### C. Server $\rightarrow$ Client: `game:over`
 Thông báo kết thúc ván cờ.
 * **Payload**:
 ```json
 {
-  "winner": "RED", // "RED" | "BLUE" | "DRAW"
-  "reason": "BASE_INVADED", // "BASE_INVADED" | "ALL_PIECES_CAPTURED" | "NO_VALID_MOVES" | "SURRENDER" | "TIMEOUT"
+  "winner": "RED",
+  "reason": "BASE_INVADED",
   "message": "Phe Đỏ đã chiếm được căn cứ i9 và giành chiến thắng!"
 }
 ```
 
-#### G. Client $\rightarrow$ Server: `game:rematch_request`
+`reason` là `BASE_INVADED` hoặc `PIECE_TYPE_ELIMINATED`.
+
+#### D. Client $\rightarrow$ Server: `game:rematch_request`
 Yêu cầu đấu lại ván mới.
 
 ---

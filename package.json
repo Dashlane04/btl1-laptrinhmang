@@ -4,6 +4,7 @@
   "description": "Trò chơi cờ Oẳn Tù Tì v2 (OTTv2) 9x9 Multiplayer Real-time trên nền Web (Serverless với playhtml Cloud & CRDT)",
   "main": "server/server.js",
   "scripts": {
+    "postinstall": "node -e \"require('fs').cpSync('node_modules/playhtml/dist','client/vendor/playhtml',{recursive:true})\"",
     "start": "node server/server.js",
     "server": "node server/server.js",
     "dev": "node server/server.js",
@@ -29,12 +30,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "socket.io": "^4.8.1",
     "playhtml": "2.14.1",
-    "ws": "^8.18.0",
-    "yjs": "13.6.18",
-    "y-protocols": "^1.0.7",
-    "lib0": "^0.2.117"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "socket.io-client": "^4.8.1"
